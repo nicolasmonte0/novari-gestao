@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Administrativo - Novari Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#E9ECF2; --hover:#F3F5F9;
+  --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
+  --line:#DFE3EA; --line-strong:#C8CFDB;
+  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7;
+  --brand-red:#CE1B21; --brand-blue:#66B2E5;
+  --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --warn-bg:#FFF8EB; --ok:#067647; --ok-bg:#ECFDF3;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0D1322; --surface:#151C2E; --col:#111828; --hover:#1C2540;
+    --ink:#E8ECF5; --ink-2:#AAB3C8; --muted:#8B96AE;
+    --line:#252E46; --line-strong:#34405C;
+    --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5;
+    --brand-red:#FF6B61; --brand-blue:#66B2E5;
+    --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --warn-bg:#3A2E18; --ok:#5BD29A; --ok-bg:#183A28;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0}
+.logo-img{height:38px;width:auto;display:block}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2;color:var(--ink);text-align:left}
+.brand-sub{color:var(--muted);font-size:12.5px;text-align:left}
+
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;padding:0;margin-bottom:10px}
+.back:hover{color:var(--ink)}
+.page-h{margin:0 0 20px}
+.page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.page-h p{margin:0;color:var(--muted);font-size:13px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13.5px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn.danger{color:var(--alert);border-color:var(--alert)}
+.btn.danger:hover{background:var(--alert-bg)}
+.btn.sm{height:30px;font-size:12px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* Summary */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.summary-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.summary-card .label{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.summary-card .value{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.summary-card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:2px solid var(--line);margin-bottom:20px;gap:0;overflow-x:auto}
+.tab{padding:10px 18px;border:0;background:none;color:var(--muted);font-weight:600;font-size:13.5px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.card-h h2{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+
+/* Info grid (Empresa) */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.info-item label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;font-weight:500}
+.info-item span{font-size:14px;font-weight:500}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tr:hover td{background:var(--hover)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:20px}
+.status.ok{background:var(--ok-bg);color:var(--ok)}
+.status.warn{background:var(--warn-bg);color:var(--warn)}
+.status.alert{background:var(--alert-bg);color:var(--alert)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.ok{background:var(--ok)}
+.dot.warn{background:var(--warn)}
+.dot.alert{background:var(--alert)}
+
+/* Doc list */
+.doc-list{display:flex;flex-direction:column;gap:8px}
+.doc-item{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid var(--line);border-radius:8px}
+.doc-item:hover{border-color:var(--line-strong)}
+.doc-icon{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
+.doc-icon.pdf{background:#FEF1EF;color:#B42318}
+.doc-icon.file{background:#EFF6FF;color:#1E40AF}
+@media (prefers-color-scheme:dark){
+  .doc-icon.pdf{background:#3A1B18;color:#FF8F80}
+  .doc-icon.file{background:#172544;color:#93C5FD}
+}
+.doc-info{flex:1;min-width:0}
+.doc-info h4{margin:0 0 2px;font-size:14px;font-weight:600}
+.doc-info p{margin:0;font-size:12px;color:var(--muted)}
+
+/* Patrimônio */
+.pat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.pat-card{border:1px solid var(--line);border-radius:10px;padding:16px}
+.pat-card:hover{border-color:var(--line-strong)}
+.pat-card h4{margin:0 0 8px;font-size:14.5px;font-weight:600}
+.pat-meta{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.pat-val{font-size:18px;font-weight:700;color:var(--accent)}
+
+/* Dialog */
+.ov{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,14,28,.55)}
+.dlg{width:520px;max-width:100%;max-height:92vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 10px}
+.dlg-h h2{margin:0;font-size:16px;font-weight:700}
+.dlg-b{padding:6px 22px 18px}
+.dlg-f{display:flex;gap:8px;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--line)}
+.dlg-f .right{display:flex;gap:8px}
+.x{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.x:hover{background:var(--hover);color:var(--ink)}
+.form{display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f label{display:block;margin-bottom:5px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.inp:focus{border-color:var(--accent);outline:none}
+select.inp{appearance:auto}
+.err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+.loading{color:var(--muted);padding:30px 0;text-align:center}
+
+@media (max-width:820px){.row2{grid-template-columns:1fr}}
+@media (max-width:600px){.summary-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78Zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useCallback, useMemo} = React;
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PAINEL_URL = "./";
+
+function Icon({name, className}) {
+  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+}
+
+/* ── Helpers ─────────────────────────────── */
+function fmtDate(d) {
+  if (!d) return '—';
+  if (d.toDate) d = d.toDate();
+  if (typeof d === 'string') d = new Date(d);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+function parseDateBR(s) {
+  if (!s) return null;
+  const p = s.split('/');
+  if (p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
+  return new Date(s);
+}
+function diasAte(dateStr) {
+  if (!dateStr) return 999;
+  const d = parseDateBR(dateStr);
+  if (isNaN(d)) return 999;
+  return Math.ceil((d - new Date()) / 86400000);
+}
+function certStatus(validade) {
+  const d = diasAte(validade);
+  if (d < 0) return {cls:'alert', txt:'Vencida'};
+  if (d <= 60) return {cls:'warn', txt:`Vence em ${d} dias`};
+  return {cls:'ok', txt:'Válida'};
+}
+function licStatus(validade) {
+  const d = diasAte(validade);
+  if (d < 0) return {cls:'alert', txt:'Vencida'};
+  if (d <= 90) return {cls:'warn', txt:`Vence em ${d} dias`};
+  return {cls:'ok', txt:'Vigente'};
+}
+function fmtBRL(v) {
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+
+/* ── Header ──────────────────────────────── */
+function Header() {
+  return (
+    <header className="top">
+      <a href={PAINEL_URL} className="brand" style={{textDecoration:'none'}}>
+        <img src="novari-icon.png" alt="Novari Print" className="logo-img" />
+        <div>
+          <div className="brand-name">Novari Print</div>
+          <div className="brand-sub">Gestão</div>
+        </div>
+      </a>
+    </header>
+  );
+}
+
+/* ── Generic Dialog ──────────────────────── */
+function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
+  return (
+    <div className="ov" onClick={e => {if(e.target===e.currentTarget) onClose();}}>
+      <div className="dlg" role="dialog" aria-modal="true">
+        <div className="dlg-h">
+          <h2>{title}</h2>
+          <button className="x" onClick={onClose}><Icon name="x"/></button>
+        </div>
+        <div className="dlg-b">
+          {children}
+          {err && <p className="err">{err}</p>}
+        </div>
+        <div className="dlg-f">
+          <div>{onDelete && <button className="btn danger" onClick={onDelete} disabled={saving}><Icon name="trash"/> Excluir</button>}</div>
+          <div className="right">
+            <button className="btn" onClick={onClose}>Cancelar</button>
+            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── useCollection hook ──────────────────── */
+function useCollection(name) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection(name).onSnapshot(snap => {
+      setItems(snap.docs.map(d => ({id:d.id, ...d.data()})));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, [name]);
+  return {items, loading};
+}
+
+/* ── EMPRESA TAB ─────────────────────────── */
+function EmpresaTab() {
+  const {items, loading} = useCollection('empresa');
+  const [editing, setEditing] = useState(false);
+  const empresa = items[0] || null;
+
+  if (loading) return <div className="loading">Carregando…</div>;
+
+  if (!empresa && !editing) {
+    return (
+      <div className="card">
+        <div className="empty">
+          <p>Nenhum dado da empresa cadastrado.</p>
+          <button className="btn primary" onClick={() => setEditing(true)} style={{marginTop:10}}>
+            <Icon name="plus"/> Cadastrar Empresa
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-h">
+          <h2><Icon name="building"/> Dados da Empresa</h2>
+          <button className="btn" onClick={() => setEditing(true)}><Icon name="edit"/> Editar</button>
+        </div>
+        {empresa && (
+          <div className="info-grid">
+            {[
+              ['Razão Social', empresa.razaoSocial],
+              ['Nome Fantasia', empresa.nomeFantasia],
+              ['CNPJ', empresa.cnpj],
+              ['Inscrição Estadual', empresa.ie],
+              ['Inscrição Municipal', empresa.im],
+              ['CNAE Principal', empresa.cnae],
+              ['Endereço', empresa.endereco],
+              ['Telefone', empresa.telefone],
+              ['E-mail', empresa.email],
+              ['Responsável Legal', empresa.responsavel],
+            ].map(([l,v]) => (
+              <div className="info-item" key={l}><label>{l}</label><span>{v || '—'}</span></div>
+            ))}
+          </div>
+        )}
+      </div>
+      {editing && <EmpresaForm data={empresa} onClose={() => setEditing(false)} />}
+    </>
+  );
+}
+
+function EmpresaForm({data, onClose}) {
+  const isEdit = !!(data && data.id);
+  const empty = {razaoSocial:'',nomeFantasia:'',cnpj:'',ie:'',im:'',cnae:'',endereco:'',telefone:'',email:'',responsavel:''};
+  const [form, setForm] = useState(data ? {...empty,...data} : empty);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+
+  async function save() {
+    if (!form.razaoSocial.trim()) {setErr('Informe a razão social.'); return;}
+    setErr(''); setSaving(true);
+    try {
+      const d = {};
+      Object.keys(empty).forEach(k => d[k] = (form[k]||'').trim());
+      if (isEdit) await db.collection('empresa').doc(data.id).update(d);
+      else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('empresa').add(d); }
+      onClose();
+    } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog title={isEdit ? 'Editar Empresa' : 'Cadastrar Empresa'} onClose={onClose} onSave={save} saving={saving} err={err}>
+      <div className="form">
+        <div className="f"><label>Razão Social *</label><input className="inp" value={form.razaoSocial} onChange={e=>set('razaoSocial',e.target.value)}/></div>
+        <div className="row2">
+          <div className="f"><label>Nome Fantasia</label><input className="inp" value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)}/></div>
+          <div className="f"><label>CNPJ</label><input className="inp" value={form.cnpj} onChange={e=>set('cnpj',e.target.value)}/></div>
+        </div>
+        <div className="row2">
+          <div className="f"><label>Inscrição Estadual</label><input className="inp" value={form.ie} onChange={e=>set('ie',e.target.value)}/></div>
+          <div className="f"><label>Inscrição Municipal</label><input className="inp" value={form.im} onChange={e=>set('im',e.target.value)}/></div>
+        </div>
+        <div className="f"><label>CNAE Principal</label><input className="inp" value={form.cnae} onChange={e=>set('cnae',e.target.value)}/></div>
+        <div className="f"><label>Endereço</label><input className="inp" value={form.endereco} onChange={e=>set('endereco',e.target.value)}/></div>
+        <div className="row2">
+          <div className="f"><label>Telefone</label><input className="inp" value={form.telefone} onChange={e=>set('telefone',e.target.value)}/></div>
+          <div className="f"><label>E-mail</label><input className="inp" value={form.email} onChange={e=>set('email',e.target.value)}/></div>
+        </div>
+        <div className="f"><label>Responsável Legal</label><input className="inp" value={form.responsavel} onChange={e=>set('responsavel',e.target.value)}/></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── CERTIDÕES TAB ───────────────────────── */
+function CertidoesTab() {
+  const {items, loading} = useCollection('certidoes');
+  const [editItem, setEditItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  if (loading) return <div className="loading">Carregando…</div>;
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-h">
+          <h2><Icon name="shield"/> Certidões</h2>
+          <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Nova Certidão</button>
+        </div>
+        {items.length === 0 ? <div className="empty">Nenhuma certidão cadastrada.</div> : (
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead><tr><th>Certidão</th><th>Emissão</th><th>Validade</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {items.map(c => {
+                  const st = certStatus(c.validade);
+                  return (
+                    <tr key={c.id}>
+                      <td style={{fontWeight:600}}>{c.nome}</td>
+                      <td>{c.emissao || '—'}</td>
+                      <td>{c.validade || '—'}</td>
+                      <td><span className={`status ${st.cls}`}><span className={`dot ${st.cls}`}></span> {st.txt}</span></td>
+                      <td><button className="btn sm" onClick={() => {setEditItem(c); setShowForm(true);}}><Icon name="edit" className="ic" style={{width:13,height:13}}/></button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {showForm && <CertidaoForm data={editItem} onClose={() => setShowForm(false)} />}
+    </>
+  );
+}
+
+function CertidaoForm({data, onClose}) {
+  const isEdit = !!(data && data.id);
+  const empty = {nome:'', emissao:'', validade:''};
+  const [form, setForm] = useState(data ? {...empty,...data} : empty);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+
+  async function save() {
+    if (!form.nome.trim()) {setErr('Informe o nome da certidão.'); return;}
+    setErr(''); setSaving(true);
+    try {
+      const d = {nome:form.nome.trim(), emissao:(form.emissao||'').trim(), validade:(form.validade||'').trim()};
+      if (isEdit) await db.collection('certidoes').doc(data.id).update(d);
+      else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('certidoes').add(d); }
+      onClose();
+    } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir esta certidão?')) return;
+    setSaving(true);
+    try { await db.collection('certidoes').doc(data.id).delete(); onClose(); }
+    catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
+  }
+
+  return (
+    <Dialog title={isEdit ? 'Editar Certidão' : 'Nova Certidão'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+      <div className="form">
+        <div className="f"><label>Nome da Certidão *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: CND Federal (PGFN/RFB)"/></div>
+        <div className="row2">
+          <div className="f"><label>Emissão (dd/mm/aaaa)</label><input className="inp" value={form.emissao} onChange={e=>set('emissao',e.target.value)} placeholder="15/04/2026"/></div>
+          <div className="f"><label>Validade (dd/mm/aaaa)</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="12/10/2026"/></div>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── DOCUMENTOS TAB ──────────────────────── */
+function DocumentosTab() {
+  const {items, loading} = useCollection('documentos');
+  const [editItem, setEditItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  if (loading) return <div className="loading">Carregando…</div>;
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-h">
+          <h2><Icon name="file"/> Documentos Societários</h2>
+          <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Novo Documento</button>
+        </div>
+        {items.length === 0 ? <div className="empty">Nenhum documento cadastrado.</div> : (
+          <div className="doc-list">
+            {items.map(d => (
+              <div className="doc-item" key={d.id} style={{cursor:'pointer'}} onClick={() => {setEditItem(d); setShowForm(true);}}>
+                <div className={`doc-icon ${d.tipo === 'pdf' ? 'pdf' : 'file'}`}><Icon name="file"/></div>
+                <div className="doc-info">
+                  <h4>{d.nome}</h4>
+                  <p>{[d.formato, d.tamanho, d.dataAtualizacao].filter(Boolean).join(' · ')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {showForm && <DocumentoForm data={editItem} onClose={() => setShowForm(false)} />}
+    </>
+  );
+}
+
+function DocumentoForm({data, onClose}) {
+  const isEdit = !!(data && data.id);
+  const empty = {nome:'', tipo:'pdf', formato:'PDF', tamanho:'', dataAtualizacao:''};
+  const [form, setForm] = useState(data ? {...empty,...data} : empty);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+
+  async function save() {
+    if (!form.nome.trim()) {setErr('Informe o nome do documento.'); return;}
+    setErr(''); setSaving(true);
+    try {
+      const d = {nome:form.nome.trim(), tipo:(form.tipo||'pdf').trim(), formato:(form.formato||'').trim(), tamanho:(form.tamanho||'').trim(), dataAtualizacao:(form.dataAtualizacao||'').trim()};
+      if (isEdit) await db.collection('documentos').doc(data.id).update(d);
+      else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('documentos').add(d); }
+      onClose();
+    } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este documento?')) return;
+    setSaving(true);
+    try { await db.collection('documentos').doc(data.id).delete(); onClose(); }
+    catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
+  }
+
+  return (
+    <Dialog title={isEdit ? 'Editar Documento' : 'Novo Documento'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+      <div className="form">
+        <div className="f"><label>Nome do Documento *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Contrato Social — Consolidado"/></div>
+        <div className="row2">
+          <div className="f">
+            <label>Tipo</label>
+            <select className="inp" value={form.tipo} onChange={e=>set('tipo',e.target.value)}>
+              <option value="pdf">PDF</option>
+              <option value="file">Outro</option>
+            </select>
+          </div>
+          <div className="f"><label>Tamanho</label><input className="inp" value={form.tamanho} onChange={e=>set('tamanho',e.target.value)} placeholder="Ex: 2.1 MB"/></div>
+        </div>
+        <div className="f"><label>Data de Atualização</label><input className="inp" value={form.dataAtualizacao} onChange={e=>set('dataAtualizacao',e.target.value)} placeholder="10/03/2026"/></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── LICENÇAS TAB ────────────────────────── */
+function LicencasTab() {
+  const {items, loading} = useCollection('licencas');
+  const [editItem, setEditItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  if (loading) return <div className="loading">Carregando…</div>;
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-h">
+          <h2><Icon name="key"/> Licenças e Alvarás</h2>
+          <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Nova Licença</button>
+        </div>
+        {items.length === 0 ? <div className="empty">Nenhuma licença cadastrada.</div> : (
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead><tr><th>Licença / Alvará</th><th>Órgão</th><th>Validade</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {items.map(l => {
+                  const st = licStatus(l.validade);
+                  return (
+                    <tr key={l.id}>
+                      <td style={{fontWeight:600}}>{l.nome}</td>
+                      <td>{l.orgao || '—'}</td>
+                      <td>{l.validade || '—'}</td>
+                      <td><span className={`status ${st.cls}`}><span className={`dot ${st.cls}`}></span> {st.txt}</span></td>
+                      <td><button className="btn sm" onClick={() => {setEditItem(l); setShowForm(true);}}><Icon name="edit" className="ic" style={{width:13,height:13}}/></button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {showForm && <LicencaForm data={editItem} onClose={() => setShowForm(false)} />}
+    </>
+  );
+}
+
+function LicencaForm({data, onClose}) {
+  const isEdit = !!(data && data.id);
+  const empty = {nome:'', orgao:'', validade:''};
+  const [form, setForm] = useState(data ? {...empty,...data} : empty);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+
+  async function save() {
+    if (!form.nome.trim()) {setErr('Informe o nome da licença.'); return;}
+    setErr(''); setSaving(true);
+    try {
+      const d = {nome:form.nome.trim(), orgao:(form.orgao||'').trim(), validade:(form.validade||'').trim()};
+      if (isEdit) await db.collection('licencas').doc(data.id).update(d);
+      else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('licencas').add(d); }
+      onClose();
+    } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir esta licença?')) return;
+    setSaving(true);
+    try { await db.collection('licencas').doc(data.id).delete(); onClose(); }
+    catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
+  }
+
+  return (
+    <Dialog title={isEdit ? 'Editar Licença' : 'Nova Licença'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+      <div className="form">
+        <div className="f"><label>Nome da Licença / Alvará *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Alvará de Funcionamento"/></div>
+        <div className="row2">
+          <div className="f"><label>Órgão</label><input className="inp" value={form.orgao} onChange={e=>set('orgao',e.target.value)} placeholder="Ex: Prefeitura de Manaus"/></div>
+          <div className="f"><label>Validade (dd/mm/aaaa)</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="31/12/2026"/></div>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── PATRIMÔNIO TAB ──────────────────────── */
+function PatrimonioTab() {
+  const {items, loading} = useCollection('patrimonio');
+  const [editItem, setEditItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  if (loading) return <div className="loading">Carregando…</div>;
+
+  const total = items.reduce((s,p) => s + Number(p.valor||0), 0);
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-h">
+          <h2><Icon name="box"/> Patrimônio</h2>
+          <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Novo Item</button>
+        </div>
+        {items.length === 0 ? <div className="empty">Nenhum item de patrimônio cadastrado.</div> : (
+          <div className="pat-grid">
+            {items.map(p => (
+              <div className="pat-card" key={p.id} style={{cursor:'pointer'}} onClick={() => {setEditItem(p); setShowForm(true);}}>
+                <h4>{p.nome}</h4>
+                <div className="pat-meta">
+                  {p.detalhes && <span>{p.detalhes}</span>}
+                  {(p.placa || p.aquisicao) && <span>{[p.placa && `Placa: ${p.placa}`, p.aquisicao && `Aquisição: ${p.aquisicao}`].filter(Boolean).join(' · ')}</span>}
+                </div>
+                <div className="pat-val">{fmtBRL(p.valor)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {showForm && <PatrimonioForm data={editItem} onClose={() => setShowForm(false)} />}
+    </>
+  );
+}
+
+function PatrimonioForm({data, onClose}) {
+  const isEdit = !!(data && data.id);
+  const empty = {nome:'', detalhes:'', placa:'', aquisicao:'', valor:''};
+  const [form, setForm] = useState(data ? {...empty,...data, valor: String(data.valor||'')} : empty);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+
+  async function save() {
+    if (!form.nome.trim()) {setErr('Informe o nome do item.'); return;}
+    setErr(''); setSaving(true);
+    try {
+      const d = {nome:form.nome.trim(), detalhes:(form.detalhes||'').trim(), placa:(form.placa||'').trim(), aquisicao:(form.aquisicao||'').trim(), valor:Number(form.valor)||0};
+      if (isEdit) await db.collection('patrimonio').doc(data.id).update(d);
+      else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('patrimonio').add(d); }
+      onClose();
+    } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este item?')) return;
+    setSaving(true);
+    try { await db.collection('patrimonio').doc(data.id).delete(); onClose(); }
+    catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
+  }
+
+  return (
+    <Dialog title={isEdit ? 'Editar Item' : 'Novo Item'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+      <div className="form">
+        <div className="f"><label>Nome / Descrição *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Impressora UV Flatbed"/></div>
+        <div className="f"><label>Detalhes (marca, modelo)</label><input className="inp" value={form.detalhes} onChange={e=>set('detalhes',e.target.value)} placeholder="Ex: Roland · LEJ-640FT"/></div>
+        <div className="row2">
+          <div className="f"><label>Placa / Identificação</label><input className="inp" value={form.placa} onChange={e=>set('placa',e.target.value)} placeholder="#001"/></div>
+          <div className="f"><label>Aquisição</label><input className="inp" value={form.aquisicao} onChange={e=>set('aquisicao',e.target.value)} placeholder="03/2023"/></div>
+        </div>
+        <div className="f"><label>Valor (R$)</label><input className="inp" type="number" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="85000"/></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── APP ─────────────────────────────────── */
+const TABS = [
+  {key:'empresa', label:'Empresa', icon:'building'},
+  {key:'certidoes', label:'Certidões', icon:'shield'},
+  {key:'documentos', label:'Documentos', icon:'file'},
+  {key:'licencas', label:'Licenças', icon:'key'},
+  {key:'patrimonio', label:'Patrimônio', icon:'box'},
+];
+
+function App() {
+  const [tab, setTab] = useState('empresa');
+  const certidoes = useCollection('certidoes');
+  const documentos = useCollection('documentos');
+  const patrimonio = useCollection('patrimonio');
+
+  const certValidas = certidoes.items.filter(c => certStatus(c.validade).cls === 'ok').length;
+  const certTotal = certidoes.items.length;
+  const certVencendo = certidoes.items.filter(c => certStatus(c.validade).cls === 'warn');
+  const patTotal = patrimonio.items.reduce((s,p) => s + Number(p.valor||0), 0);
+
+  return (
+    <>
+      <Header />
+      <main className="wrap">
+        <a href={PAINEL_URL} className="back"><Icon name="back"/> Voltar ao Painel</a>
+        <div className="page-h">
+          <h1>Administrativo</h1>
+          <p>Dados da empresa, certidões, documentos e patrimônio.</p>
+        </div>
+
+        <div className="summary-row">
+          <div className="summary-card">
+            <div className="label">Certidões</div>
+            <div className="value" style={{color: certTotal > 0 && certValidas === certTotal ? 'var(--ok)' : certTotal > 0 ? 'var(--warn)' : 'var(--ink)'}}>
+              {certTotal > 0 ? `${certValidas}/${certTotal} válidas` : '—'}
+            </div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Vencendo em 60 dias</div>
+            <div className="value" style={{color: certVencendo.length > 0 ? 'var(--warn)' : 'var(--ok)'}}>
+              {certVencendo.length}
+            </div>
+            {certVencendo.length > 0 && <div className="sub">{certVencendo.map(c => c.nome).join(', ')}</div>}
+          </div>
+          <div className="summary-card">
+            <div className="label">Documentos</div>
+            <div className="value">{documentos.items.length}</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Patrimônio</div>
+            <div className="value">{patTotal > 0 ? fmtBRL(patTotal) : '—'}</div>
+          </div>
+        </div>
+
+        <div className="tabs">
+          {TABS.map(t => (
+            <button key={t.key} className={`tab${tab===t.key?' active':''}`} onClick={() => setTab(t.key)}>
+              <Icon name={t.icon} style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/> {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'empresa' && <EmpresaTab />}
+        {tab === 'certidoes' && <CertidoesTab />}
+        {tab === 'documentos' && <DocumentosTab />}
+        {tab === 'licencas' && <LicencasTab />}
+        {tab === 'patrimonio' && <PatrimonioTab />}
+      </main>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
