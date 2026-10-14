@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Licitação - Novari Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#E9ECF2; --hover:#F3F5F9;
+  --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
+  --line:#DFE3EA; --line-strong:#C8CFDB;
+  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7;
+  --brand-red:#CE1B21; --brand-blue:#66B2E5;
+  --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --warn-bg:#FFF8EB; --ok:#067647; --ok-bg:#ECFDF3;
+  --info:#1D6FA5; --info-bg:#EAF5FC;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0D1322; --surface:#151C2E; --col:#111828; --hover:#1C2540;
+    --ink:#E8ECF5; --ink-2:#AAB3C8; --muted:#8B96AE;
+    --line:#252E46; --line-strong:#34405C;
+    --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5;
+    --brand-red:#FF6B61; --brand-blue:#66B2E5;
+    --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --warn-bg:#3A2E18; --ok:#5BD29A; --ok-bg:#183A28;
+    --info:#93C5FD; --info-bg:#172544;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0;text-decoration:none}
+.logo-img{height:38px;width:auto;display:block}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2;color:var(--ink);text-align:left}
+.brand-sub{color:var(--muted);font-size:12.5px;text-align:left}
+
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;padding:0;margin-bottom:10px;text-decoration:none}
+.back:hover{color:var(--ink)}
+.page-h{margin:0 0 20px}
+.page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.page-h p{margin:0;color:var(--muted);font-size:13px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13.5px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn.danger{color:var(--alert);border-color:var(--alert)}
+.btn.danger:hover{background:var(--alert-bg)}
+.btn.sm{height:30px;font-size:12px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* Summary */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.summary-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.summary-card .label{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.summary-card .value{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.summary-card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:2px solid var(--line);margin-bottom:20px;gap:0;overflow-x:auto}
+.tab{padding:10px 18px;border:0;background:none;color:var(--muted);font-weight:600;font-size:13.5px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Top bar */
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+
+/* Search & filters */
+.tools{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:0 12px}
+.search input{flex:1;border:0;background:none;height:40px;font-size:14px;color:var(--ink);outline:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--line-strong);border-radius:20px;background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.chip b{font-weight:700}
+
+/* Edital cards */
+.ed-list{display:flex;flex-direction:column;gap:10px}
+.ed-card{display:block;width:100%;text-align:left;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font:inherit;color:inherit}
+.ed-card:hover{border-color:var(--line-strong)}
+.ed-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.ed-top h4{margin:0;font-size:14.5px;font-weight:600}
+.ed-obj{margin:0 0 8px;font-size:13px;color:var(--ink-2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ed-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted)}
+.ed-meta span{display:inline-flex;align-items:center;gap:5px}
+
+/* Status badges */
+.st{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
+.st.analise{background:var(--info-bg);color:var(--info)}
+.st.participando{background:var(--warn-bg);color:var(--warn)}
+.st.ganho{background:var(--ok-bg);color:var(--ok)}
+.st.perdido{background:var(--alert-bg);color:var(--alert)}
+.st.cancelado{background:var(--col);color:var(--muted)}
+
+/* Concorrentes */
+.conc-list{display:flex;flex-direction:column;gap:8px}
+.conc-card{display:block;width:100%;text-align:left;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font:inherit;color:inherit}
+.conc-card:hover{border-color:var(--line-strong)}
+.conc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.conc-top h4{margin:0;font-size:14.5px;font-weight:600}
+.conc-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted)}
+.conc-meta span{display:inline-flex;align-items:center;gap:5px}
+.seg-tag{display:inline-flex;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--col);color:var(--ink-2);margin-right:4px;margin-bottom:4px}
+
+/* Dialog */
+.ov{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,14,28,.55)}
+.dlg{width:560px;max-width:100%;max-height:92vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 10px}
+.dlg-h h2{margin:0;font-size:16px;font-weight:700}
+.dlg-b{padding:6px 22px 18px}
+.dlg-f{display:flex;gap:8px;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--line)}
+.dlg-f .right{display:flex;gap:8px}
+.x{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.x:hover{background:var(--hover);color:var(--ink)}
+.form{display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.f label{display:block;margin-bottom:5px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.inp:focus{border-color:var(--accent);outline:none}
+select.inp{appearance:auto}
+.err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+.loading{color:var(--muted);padding:30px 0;text-align:center}
+
+/* Segmentos input */
+.seg-input{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);min-height:40px;align-items:center}
+.seg-input input{flex:1;min-width:100px;border:0;background:none;font-size:14px;color:var(--ink);outline:none;padding:2px 0}
+.seg-rm{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:14px;line-height:1}
+.seg-rm:hover{color:var(--alert)}
+
+@media (max-width:820px){.row2,.row3{grid-template-columns:1fr}}
+@media (max-width:600px){.summary-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-dollar" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+</svg>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useMemo} = React;
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PAINEL_URL = "./";
+const MODALIDADES = ['Pregão Eletrônico','Concorrência','Tomada de Preços','Convite','Dispensa','Inexigibilidade','Leilão','Diálogo Competitivo'];
+const STATUS_LIST = ['Em análise','Participando','Ganho','Perdido','Cancelado'];
+const STATUS_CLS = {'Em análise':'analise','Participando':'participando','Ganho':'ganho','Perdido':'perdido','Cancelado':'cancelado'};
+
+function Icon({name, className}) {
+  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+}
+
+/* ── Header (padrão) ─────────────────────── */
+function Header() {
+  return (
+    <header className="top">
+      <a href={PAINEL_URL} className="brand">
+        <img src="novari-icon.png" alt="Novari Print" className="logo-img" />
+        <div>
+          <div className="brand-name">Novari Print</div>
+          <div className="brand-sub">Gestão</div>
+        </div>
+      </a>
+    </header>
+  );
+}
+
+/* ── Dialog (padrão) ─────────────────────── */
+function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
+  return (
+    <div className="ov" onClick={e => {if(e.target===e.currentTarget) onClose();}}>
+      <div className="dlg" role="dialog" aria-modal="true">
+        <div className="dlg-h">
+          <h2>{title}</h2>
+          <button className="x" onClick={onClose}><Icon name="x"/></button>
+        </div>
+        <div className="dlg-b">
+          {children}
+          {err && <p className="err">{err}</p>}
+        </div>
+        <div className="dlg-f">
+          <div>{onDelete && <button className="btn danger" onClick={onDelete} disabled={saving}><Icon name="trash"/> Excluir</button>}</div>
+          <div className="right">
+            <button className="btn" onClick={onClose}>Cancelar</button>
+            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── useCollection hook ──────────────────── */
+function useCollection(name) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection(name).onSnapshot(snap => {
+      setItems(snap.docs.map(d => ({id:d.id, ...d.data()})));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, [name]);
+  return {items, loading};
+}
+
+/* ── Helpers ──────────────────────────────── */
+function fmtBRL(v) {
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return '—';
+  return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('pt-BR');
+}
+
+function toInputDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toISOString().slice(0,10);
+}
+
+/* ── Edital Dialog ───────────────────────── */
+const emptyEdital = {numero:'', orgao:'', objeto:'', modalidade:'Pregão Eletrônico', status:'Em análise', valorEstimado:'', dataAbertura:'', observacoes:''};
+
+function EditalDialog({initial, onClose, onSaved}) {
+  const isEdit = !!(initial && initial.id);
+  const [form, setForm] = useState(
+    initial && initial.id
+      ? {...emptyEdital, ...initial, valorEstimado:String(initial.valorEstimado??''), dataAbertura: toInputDate(initial.dataAbertura)}
+      : emptyEdital
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  function set(k, v) { setForm(f => ({...f, [k]: v})); }
+
+  async function save() {
+    if (!form.numero.trim() && !form.orgao.trim()) { setErr('Informe o número ou órgão do edital.'); return; }
+    setErr(''); setSaving(true);
+    try {
+      const data = {
+        numero: form.numero.trim(),
+        orgao: form.orgao.trim(),
+        objeto: form.objeto.trim(),
+        modalidade: form.modalidade,
+        status: form.status,
+        valorEstimado: parseFloat(form.valorEstimado) || 0,
+        dataAbertura: form.dataAbertura ? new Date(form.dataAbertura + 'T12:00:00') : null,
+        observacoes: (form.observacoes || '').trim(),
+      };
+      if (isEdit) {
+        await db.collection('editais').doc(initial.id).update(data);
+      } else {
+        data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('editais').add(data);
+      }
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível salvar. Tente novamente.');
+    } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este edital? Essa ação não pode ser desfeita.')) return;
+    setSaving(true);
+    try {
+      await db.collection('editais').doc(initial.id).delete();
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível excluir. Tente novamente.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      title={isEdit ? 'Editar edital' : 'Novo edital'}
+      onClose={onClose}
+      onSave={save}
+      onDelete={isEdit ? remove : null}
+      saving={saving}
+      err={err}
+    >
+      <div className="form">
+        <div className="row2">
+          <div className="f"><label>Número / Identificação *</label><input className="inp" value={form.numero} onChange={e=>set('numero',e.target.value)} placeholder="PE 042/2026" /></div>
+          <div className="f"><label>Órgão *</label><input className="inp" value={form.orgao} onChange={e=>set('orgao',e.target.value)} placeholder="SEMSA, SEDUC, etc." /></div>
+        </div>
+        <div className="f"><label>Objeto</label><textarea className="inp" rows="3" value={form.objeto} onChange={e=>set('objeto',e.target.value)} placeholder="Descrição do objeto da licitação"></textarea></div>
+        <div className="row3">
+          <div className="f">
+            <label>Modalidade</label>
+            <select className="inp" value={form.modalidade} onChange={e=>set('modalidade',e.target.value)}>
+              {MODALIDADES.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="f">
+            <label>Status</label>
+            <select className="inp" value={form.status} onChange={e=>set('status',e.target.value)}>
+              {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="f"><label>Data abertura</label><input className="inp" type="date" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} /></div>
+        </div>
+        <div className="f"><label>Valor estimado (R$)</label><input className="inp" type="number" min="0" step="0.01" value={form.valorEstimado} onChange={e=>set('valorEstimado',e.target.value)} placeholder="0,00" /></div>
+        <div className="f"><label>Observações</label><textarea className="inp" rows="2" value={form.observacoes||''} onChange={e=>set('observacoes',e.target.value)} placeholder="Anotações, links, documentos"></textarea></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── Concorrente Dialog ──────────────────── */
+const emptyConcorrente = {nome:'', cnpj:'', cidade:'', segmentos:[], observacoes:''};
+
+function ConcorrenteDialog({initial, onClose, onSaved}) {
+  const isEdit = !!(initial && initial.id);
+  const [form, setForm] = useState(initial && initial.id ? {...emptyConcorrente, ...initial} : emptyConcorrente);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const [segInput, setSegInput] = useState('');
+
+  function set(k, v) { setForm(f => ({...f, [k]: v})); }
+
+  function addSeg() {
+    const s = segInput.trim();
+    if (s && !form.segmentos.includes(s)) {
+      set('segmentos', [...form.segmentos, s]);
+    }
+    setSegInput('');
+  }
+
+  function rmSeg(s) {
+    set('segmentos', form.segmentos.filter(x => x !== s));
+  }
+
+  function handleSegKey(e) {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSeg(); }
+  }
+
+  async function save() {
+    if (!form.nome.trim()) { setErr('Informe o nome da empresa.'); return; }
+    setErr(''); setSaving(true);
+    try {
+      const data = {
+        nome: form.nome.trim(),
+        cnpj: form.cnpj.trim(),
+        cidade: form.cidade.trim(),
+        segmentos: form.segmentos,
+        observacoes: (form.observacoes || '').trim(),
+      };
+      if (isEdit) {
+        await db.collection('concorrentes').doc(initial.id).update(data);
+      } else {
+        data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('concorrentes').add(data);
+      }
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível salvar. Tente novamente.');
+    } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este concorrente? Essa ação não pode ser desfeita.')) return;
+    setSaving(true);
+    try {
+      await db.collection('concorrentes').doc(initial.id).delete();
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível excluir. Tente novamente.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      title={isEdit ? 'Editar concorrente' : 'Novo concorrente'}
+      onClose={onClose}
+      onSave={save}
+      onDelete={isEdit ? remove : null}
+      saving={saving}
+      err={err}
+    >
+      <div className="form">
+        <div className="f"><label>Empresa / Razão social *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Nome da empresa concorrente" /></div>
+        <div className="row2">
+          <div className="f"><label>CNPJ</label><input className="inp" value={form.cnpj} onChange={e=>set('cnpj',e.target.value)} placeholder="00.000.000/0001-00" /></div>
+          <div className="f"><label>Cidade / UF</label><input className="inp" value={form.cidade} onChange={e=>set('cidade',e.target.value)} placeholder="Manaus / AM" /></div>
+        </div>
+        <div className="f">
+          <label>Segmentos de atuação</label>
+          <div className="seg-input">
+            {form.segmentos.map(s => (
+              <span key={s} className="seg-tag">{s} <button className="seg-rm" onClick={()=>rmSeg(s)}>×</button></span>
+            ))}
+            <input value={segInput} onChange={e=>setSegInput(e.target.value)} onKeyDown={handleSegKey} onBlur={addSeg} placeholder={form.segmentos.length ? '' : 'Digite e pressione Enter'} />
+          </div>
+        </div>
+        <div className="f"><label>Observações</label><textarea className="inp" rows="2" value={form.observacoes||''} onChange={e=>set('observacoes',e.target.value)} placeholder="Pontos fortes, preços praticados, histórico"></textarea></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── App ──────────────────────────────────── */
+function App() {
+  const {items: editais, loading: loadingEd} = useCollection('editais');
+  const {items: concorrentes, loading: loadingConc} = useCollection('concorrentes');
+  const [tab, setTab] = useState('editais');
+  const [busca, setBusca] = useState('');
+  const [statusFiltro, setStatusFiltro] = useState('Todos');
+  const [editEdital, setEditEdital] = useState(null);
+  const [editConc, setEditConc] = useState(null);
+
+  // Editais sorted by date desc
+  const sortedEditais = useMemo(() =>
+    [...editais].sort((a,b) => {
+      const da = a.dataAbertura ? (a.dataAbertura.toDate ? a.dataAbertura.toDate() : new Date(a.dataAbertura)) : new Date(0);
+      const db2 = b.dataAbertura ? (b.dataAbertura.toDate ? b.dataAbertura.toDate() : new Date(b.dataAbertura)) : new Date(0);
+      return db2 - da;
+    })
+  , [editais]);
+
+  // Status counts
+  const statusCounts = useMemo(() => {
+    const c = {Todos: sortedEditais.length};
+    STATUS_LIST.forEach(s => { c[s] = sortedEditais.filter(e => e.status === s).length; });
+    return c;
+  }, [sortedEditais]);
+
+  // Filtered editais
+  const filteredEditais = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return sortedEditais.filter(e =>
+      (statusFiltro === 'Todos' || e.status === statusFiltro) &&
+      (!q || (e.numero||'').toLowerCase().includes(q) || (e.orgao||'').toLowerCase().includes(q) || (e.objeto||'').toLowerCase().includes(q))
+    );
+  }, [sortedEditais, statusFiltro, busca]);
+
+  // Concorrentes sorted by name
+  const sortedConc = useMemo(() =>
+    [...concorrentes].sort((a,b) => (a.nome||'').localeCompare(b.nome||''))
+  , [concorrentes]);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const total = sortedEditais.length;
+    const andamento = (statusCounts['Em análise'] || 0) + (statusCounts['Participando'] || 0);
+    const ganhos = statusCounts['Ganho'] || 0;
+    const decididos = ganhos + (statusCounts['Perdido'] || 0);
+    const taxa = decididos > 0 ? Math.round((ganhos / decididos) * 100) : 0;
+    return {total, andamento, ganhos, taxa, concorrentes: sortedConc.length};
+  }, [sortedEditais, statusCounts, sortedConc]);
+
+  const loading = loadingEd || loadingConc;
+
+  return (
+    <React.Fragment>
+      <Header />
+      <main className="wrap">
+        <a href={PAINEL_URL} className="back"><Icon name="back"/>Painel</a>
+
+        <div className="c-top">
+          <div className="page-h" style={{margin:0}}>
+            <h1>Licitação</h1>
+            <p>Editais, concorrentes e inteligência de mercado.</p>
+          </div>
+          {tab === 'editais' && (
+            <button className="btn primary" onClick={() => setEditEdital({})}><Icon name="plus"/>Novo edital</button>
+          )}
+          {tab === 'concorrentes' && (
+            <button className="btn primary" onClick={() => setEditConc({})}><Icon name="plus"/>Novo concorrente</button>
+          )}
+        </div>
+
+        {/* Summary cards */}
+        <div className="summary-row">
+          <div className="summary-card">
+            <div className="label">Editais cadastrados</div>
+            <div className="value">{stats.total}</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Em andamento</div>
+            <div className="value" style={{color:'var(--warn)'}}>{stats.andamento}</div>
+            <div className="sub">análise + participando</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Ganhos</div>
+            <div className="value" style={{color:'var(--ok)'}}>{stats.ganhos}</div>
+            <div className="sub">{stats.taxa > 0 ? `taxa de ${stats.taxa}%` : '—'}</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Concorrentes mapeados</div>
+            <div className="value">{stats.concorrentes}</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="tabs">
+          <button className={"tab" + (tab==='editais' ? ' active' : '')} onClick={() => setTab('editais')}>Editais</button>
+          <button className={"tab" + (tab==='concorrentes' ? ' active' : '')} onClick={() => setTab('concorrentes')}>Concorrentes</button>
+        </div>
+
+        {loading && <p className="loading">Carregando…</p>}
+
+        {/* Tab: Editais */}
+        {!loading && tab === 'editais' && (
+          <div>
+            <div className="tools">
+              <div className="search">
+                <Icon name="search" />
+                <input placeholder="Buscar por número, órgão ou objeto" value={busca} onChange={e=>setBusca(e.target.value)} />
+              </div>
+              <div className="chips">
+                {['Todos', ...STATUS_LIST].map(s => (
+                  <button key={s} className="chip" aria-pressed={statusFiltro===s} onClick={() => setStatusFiltro(s)}>
+                    {s} <b>{statusCounts[s] || 0}</b>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredEditais.length === 0 && <p className="empty">Nenhum edital encontrado.</p>}
+            {filteredEditais.length > 0 && (
+              <div className="ed-list">
+                {filteredEditais.map(e => (
+                  <button key={e.id} className="ed-card" onClick={() => setEditEdital(e)}>
+                    <div className="ed-top">
+                      <h4>{e.numero || '—'}{e.orgao ? ` — ${e.orgao}` : ''}</h4>
+                      <span className={"st " + (STATUS_CLS[e.status] || 'analise')}>● {e.status}</span>
+                    </div>
+                    {e.objeto && <p className="ed-obj">{e.objeto}</p>}
+                    <div className="ed-meta">
+                      <span><Icon name="gavel"/>{e.modalidade || '—'}</span>
+                      {e.dataAbertura && <span><Icon name="calendar"/>{fmtDate(e.dataAbertura)}</span>}
+                      {e.valorEstimado > 0 && <span><Icon name="dollar"/>{fmtBRL(e.valorEstimado)}</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Concorrentes */}
+        {!loading && tab === 'concorrentes' && (
+          <div>
+            {sortedConc.length === 0 && <p className="empty">Nenhum concorrente cadastrado.</p>}
+            {sortedConc.length > 0 && (
+              <div className="conc-list">
+                {sortedConc.map(c => (
+                  <button key={c.id} className="conc-card" onClick={() => setEditConc(c)}>
+                    <div className="conc-top">
+                      <h4>{c.nome}</h4>
+                    </div>
+                    {c.segmentos && c.segmentos.length > 0 && (
+                      <div style={{marginBottom:8}}>
+                        {c.segmentos.map(s => <span key={s} className="seg-tag">{s}</span>)}
+                      </div>
+                    )}
+                    <div className="conc-meta">
+                      {c.cnpj && <span><Icon name="building"/>{c.cnpj}</span>}
+                      {c.cidade && <span><Icon name="pin"/>{c.cidade}</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dialogs */}
+        {editEdital !== null && (
+          <EditalDialog
+            initial={editEdital}
+            onClose={() => setEditEdital(null)}
+            onSaved={() => setEditEdital(null)}
+          />
+        )}
+        {editConc !== null && (
+          <ConcorrenteDialog
+            initial={editConc}
+            onClose={() => setEditConc(null)}
+            onSaved={() => setEditConc(null)}
+          />
+        )}
+      </main>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
