@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Painel - Novari Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#E9ECF2; --hover:#F3F5F9;
+  --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
+  --line:#DFE3EA; --line-strong:#C8CFDB;
+  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7;
+  --brand-red:#CE1B21; --brand-blue:#66B2E5;
+  --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --ok:#067647;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0D1322; --surface:#151C2E; --col:#111828; --hover:#1C2540;
+    --ink:#E8ECF5; --ink-2:#AAB3C8; --muted:#8B96AE;
+    --line:#252E46; --line-strong:#34405C;
+    --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5;
+    --brand-red:#FF6B61; --brand-blue:#66B2E5;
+    --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --ok:#5BD29A;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0}
+.logo-img{height:38px;width:auto;display:block}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2;color:var(--ink);text-align:left}
+.brand-sub{color:var(--muted);font-size:12.5px;text-align:left}
+
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+.page-h{margin:0 0 20px}
+.page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.page-h p{margin:0;color:var(--muted);font-size:13px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.mcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s,transform .1s;text-align:left;font:inherit;color:inherit}
+.mcard:hover{border-color:var(--line-strong)}
+.mcard:active{transform:scale(.99)}
+.mcard.disabled{cursor:default;opacity:.55}
+.mcard.disabled:hover{border-color:var(--line)}
+.mcard .micon{width:42px;height:42px;border-radius:9px;display:grid;place-items:center;margin-bottom:14px}
+.mcard .micon .ic{width:21px;height:21px}
+.mcard h3{margin:0 0 3px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
+.mcard p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+.badge-soon{position:absolute;top:16px;right:16px;font-size:10.5px;font-weight:600;color:var(--muted);background:var(--col);padding:3px 8px;border-radius:20px}
+.ext-ic{width:13px;height:13px;color:var(--muted)}
+
+.c-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;padding:0;margin-bottom:10px}
+.back:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13.5px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn.danger{color:var(--alert);border-color:var(--alert)}
+.btn.danger:hover{background:var(--alert-bg)}
+.btn[disabled]{opacity:.5;cursor:default}
+
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.search{position:relative;flex:1;min-width:200px;max-width:380px}
+.search input{width:100%;height:38px;padding:0 12px 0 35px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-size:14px}
+.search .ic{position:absolute;left:11px;top:11px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);font-weight:500;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}
+.chip b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+.clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.ccard{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:14px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.ccard:hover{border-color:var(--line-strong)}
+.c-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap}
+.tag.orgao{background:#EFF6FF;color:#1E40AF}
+.tag.privada{background:#F0FDF4;color:#166534}
+@media (prefers-color-scheme: dark){
+  .tag.orgao{background:#172544;color:#93C5FD}
+  .tag.privada{background:#113322;color:#86EFAC}
+}
+.ccard h4{margin:0 0 2px;font-size:14.5px;font-weight:600}
+.meta{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-2)}
+.meta span{display:flex;align-items:center;gap:7px}
+.meta .ic{color:var(--muted)}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+.loading{color:var(--muted);padding:30px 0;text-align:center}
+
+.ov{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,14,28,.55)}
+.dlg{width:480px;max-width:100%;max-height:92vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 10px}
+.dlg-h h2{margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.dlg-b{padding:6px 22px 18px}
+.dlg-f{display:flex;gap:8px;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--line)}
+.dlg-f .right{display:flex;gap:8px}
+.x{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.x:hover{background:var(--hover);color:var(--ink)}
+.form{display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f label{display:block;margin-bottom:5px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.seg{display:flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+.seg button{flex:1;padding:9px 0;border:0;background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:600;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink)}
+.err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.note{margin:0 0 16px;padding:8px 12px;border:1px dashed var(--line-strong);border-radius:6px;color:var(--ink-2);font-size:12.5px}
+
+@media (max-width:820px){ .row2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
+  <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+</svg>
+
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const {useState, useEffect, useMemo} = React;
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PEDIDOS_URL = "https://nicolasmonte0.github.io/pedidos-novari-print/";
+
+function Icon({name, className}) {
+  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+}
+
+function Header({onHome}) {
+  return (
+    <header className="top">
+      <button className="brand" onClick={onHome}>
+        <img src="novari-icon.png" alt="Novari Print" className="logo-img" />
+        <div>
+          <div className="brand-name">Novari Print</div>
+          <div className="brand-sub">Gestão</div>
+        </div>
+      </button>
+    </header>
+  );
+}
+
+const MODULES = [
+  {key:'contatos', nome:'Contatos', desc:'Clientes, fornecedores e órgãos públicos', icon:'users', bg:'#EAF5FC', fg:'#1D6FA5', status:'ativo'},
+  {key:'pedidos', nome:'Pedidos', desc:'Produção e entrega de pedidos', icon:'package', bg:'#FFFBEB', fg:'#92400E', status:'externo'},
+  {key:'financeiro', nome:'Financeiro', desc:'Contas a pagar, a receber e fluxo de caixa', icon:'wallet', bg:'#F0FDF4', fg:'#166534', status:'em-breve'},
+  {key:'administrativo', nome:'Administrativo', desc:'Dados da empresa, certidões e documentos', icon:'building', bg:'#F5F3FF', fg:'#5B21B6', status:'em-breve'},
+  {key:'estoque', nome:'Estoque', desc:'Controle manual de itens', icon:'box', bg:'#FEF2F2', fg:'#991B1B', status:'em-breve'},
+  {key:'licitacao', nome:'Licitação', desc:'Editais, concorrentes e inteligência de mercado', icon:'gavel', bg:'#ECFEFF', fg:'#0E7490', status:'em-breve'},
+];
+
+function Home({onOpen}) {
+  return (
+    <main className="wrap">
+      <div className="page-h">
+        <h1>Painel</h1>
+        <p>Escolha um módulo para continuar.</p>
+      </div>
+      <div className="grid">
+        {MODULES.map(m => {
+          const disabled = m.status === 'em-breve';
+          const external = m.status === 'externo';
+          return (
+            <button
+              key={m.key}
+              className={"mcard" + (disabled ? " disabled" : "")}
+              onClick={() => { if (!disabled) onOpen(m); }}
+              disabled={disabled}
+            >
+              {disabled && <span className="badge-soon">em breve</span>}
+              <div className="micon" style={{background:m.bg, color:m.fg}}><Icon name={m.icon} /></div>
+              <h3>{m.nome}{external && <Icon name="external" className="ext-ic" />}</h3>
+              <p>{m.desc}</p>
+            </button>
+          );
+        })}
+      </div>
+    </main>
+  );
+}
+
+const emptyForm = {tipo:'privada', nome:'', cnpj:'', telefone:'', email:'', cidade:'', observacoes:''};
+
+function ContatoForm({initial, onClose, onSaved}) {
+  const isEdit = !!(initial && initial.id);
+  const [form, setForm] = useState(initial ? {...emptyForm, ...initial} : emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  function set(k, v) { setForm(f => ({...f, [k]: v})); }
+
+  async function save() {
+    if (!form.nome.trim()) { setErr('Informe o nome ou razão social.'); return; }
+    setErr(''); setSaving(true);
+    try {
+      const data = {
+        tipo: form.tipo, nome: form.nome.trim(), cnpj: form.cnpj.trim(),
+        telefone: form.telefone.trim(), email: form.email.trim(),
+        cidade: form.cidade.trim(), observacoes: form.observacoes.trim(),
+      };
+      if (isEdit) {
+        await db.collection('contatos').doc(initial.id).update(data);
+      } else {
+        data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('contatos').add(data);
+      }
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível salvar. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este contato? Essa ação não pode ser desfeita.')) return;
+    setSaving(true);
+    try {
+      await db.collection('contatos').doc(initial.id).delete();
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível excluir. Tente novamente.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="ov" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="dlg" role="dialog" aria-modal="true">
+        <div className="dlg-h">
+          <h2>{isEdit ? 'Editar contato' : 'Novo contato'}</h2>
+          <button className="x" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="dlg-b">
+          <div className="form">
+            <div className="f">
+              <label>Tipo</label>
+              <div className="seg">
+                <button type="button" aria-pressed={form.tipo==='privada'} onClick={() => set('tipo','privada')}>Empresa privada</button>
+                <button type="button" aria-pressed={form.tipo==='orgao'} onClick={() => set('tipo','orgao')}>Órgão público</button>
+              </div>
+            </div>
+            <div className="f"><label>Nome / Razão social *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Nome do cliente ou órgão" /></div>
+            <div className="row2">
+              <div className="f"><label>CNPJ</label><input className="inp" value={form.cnpj} onChange={e=>set('cnpj',e.target.value)} placeholder="00.000.000/0000-00" /></div>
+              <div className="f"><label>Telefone</label><input className="inp" value={form.telefone} onChange={e=>set('telefone',e.target.value)} placeholder="(92) 00000-0000" /></div>
+            </div>
+            <div className="f"><label>E-mail</label><input className="inp" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="contato@empresa.com" /></div>
+            <div className="f"><label>Cidade / UF</label><input className="inp" value={form.cidade} onChange={e=>set('cidade',e.target.value)} placeholder="Manaus / AM" /></div>
+            <div className="f"><label>Observações</label><textarea className="inp" rows="2" value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Anotações sobre este contato"></textarea></div>
+            {err && <p className="err">{err}</p>}
+          </div>
+        </div>
+        <div className="dlg-f">
+          <div>{isEdit && <button className="btn danger" onClick={remove} disabled={saving}>Excluir</button>}</div>
+          <div className="right">
+            <button className="btn" onClick={onClose} disabled={saving}>Cancelar</button>
+            <button className="btn primary" onClick={save} disabled={saving}>{saving ? 'Salvando…' : 'Salvar contato'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Contatos({onBack}) {
+  const [contatos, setContatos] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [filtro, setFiltro] = useState('todos');
+  const [busca, setBusca] = useState('');
+  const [editing, setEditing] = useState(null); // null = fechado, {} = novo, {...} = editar
+
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection('contatos').orderBy('nome').onSnapshot(
+      snap => {
+        setContatos(snap.docs.map(d => ({id:d.id, ...d.data()})));
+        setLoaded(true);
+      },
+      err => { console.error(err); setLoaded(true); }
+    );
+    return () => unsub();
+  }, []);
+
+  const counts = useMemo(() => ({
+    todos: contatos.length,
+    orgao: contatos.filter(c=>c.tipo==='orgao').length,
+    privada: contatos.filter(c=>c.tipo==='privada').length,
+  }), [contatos]);
+
+  const list = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return contatos.filter(c =>
+      (filtro==='todos' || c.tipo===filtro) &&
+      (!q || (c.nome||'').toLowerCase().includes(q) || (c.cidade||'').toLowerCase().includes(q) || (c.cnpj||'').includes(q))
+    );
+  }, [contatos, filtro, busca]);
+
+  return (
+    <main className="wrap">
+      <button className="back" onClick={onBack}><Icon name="back" />Painel</button>
+      <div className="c-top">
+        <div className="page-h" style={{margin:0}}>
+          <h1>Contatos</h1>
+          <p>Clientes, fornecedores e órgãos públicos.</p>
+        </div>
+        <button className="btn primary" onClick={() => setEditing({})}><Icon name="plus" />Novo contato</button>
+      </div>
+
+      <div className="tools">
+        <div className="search">
+          <Icon name="search" />
+          <input placeholder="Buscar por nome, CNPJ ou cidade" value={busca} onChange={e=>setBusca(e.target.value)} />
+        </div>
+        <div className="chips">
+          <button className="chip" aria-pressed={filtro==='todos'} onClick={()=>setFiltro('todos')}>Todos <b>{counts.todos}</b></button>
+          <button className="chip" aria-pressed={filtro==='orgao'} onClick={()=>setFiltro('orgao')}>Órgãos públicos <b>{counts.orgao}</b></button>
+          <button className="chip" aria-pressed={filtro==='privada'} onClick={()=>setFiltro('privada')}>Empresas privadas <b>{counts.privada}</b></button>
+        </div>
+      </div>
+
+      {!loaded && <p className="loading">Carregando contatos…</p>}
+      {loaded && list.length === 0 && <p className="empty">Nenhum contato encontrado.</p>}
+      {loaded && list.length > 0 && (
+        <div className="clist">
+          {list.map(c => (
+            <button key={c.id} className="ccard" onClick={() => setEditing(c)}>
+              <div className="c-h">
+                <h4>{c.nome}</h4>
+                <span className={"tag " + c.tipo}>{c.tipo==='orgao' ? 'Órgão público' : 'Empresa privada'}</span>
+              </div>
+              <div className="meta">
+                {c.cnpj && <span><Icon name="building" />{c.cnpj}</span>}
+                {c.telefone && <span><Icon name="phone" />{c.telefone}</span>}
+                {c.cidade && <span><Icon name="pin" />{c.cidade}</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {editing !== null && (
+        <ContatoForm
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => setEditing(null)}
+        />
+      )}
+    </main>
+  );
+}
+
+function App() {
+  const [page, setPage] = useState('home');
+
+  function openModule(m) {
+    if (m.status === 'externo') {
+      window.open(PEDIDOS_URL, '_blank', 'noopener');
+      return;
+    }
+    setPage(m.key);
+  }
+
+  return (
+    <React.Fragment>
+      <Header onHome={() => setPage('home')} />
+      {page === 'home' && <Home onOpen={openModule} />}
+      {page === 'contatos' && <Contatos onBack={() => setPage('home')} />}
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
