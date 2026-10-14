@@ -385,9 +385,11 @@ function parseCartaoCNPJ(rows) {
 }
 
 /* ── Armazenamento de PDFs (Firestore, plano gratuito) ───────────── */
-// Os PDFs ficam na coleção "arquivos" (em base64) para não precisar do Firebase Storage,
-// que exige plano pago. Limite do Firestore: ~1 MB por documento => ~700 KB por PDF.
-const MAX_PDF_BYTES = 700 * 1024;
+// Os PDFs ficam na coleção "arquivos" (sem usar o Firebase Storage, que exige plano pago).
+// Cada arquivo é dividido em pedaços (subcoleção "partes") porque o Firestore limita cada
+// documento a ~1 MB. Tamanho máximo por PDF: 5 MB.
+const CHUNK_BYTES = 600 * 1024;
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
 function fmtFileSize(bytes) {
   if (!bytes) return '';
@@ -396,12 +398,12 @@ function fmtFileSize(bytes) {
   return Math.max(1, Math.round(bytes / 1024)) + ' KB';
 }
 
-function fileToBase64(file) {
+function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',')[1] || '');
     r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
+    r.readAsDataURL(blob);
   });
 }
 
@@ -409,32 +411,48 @@ function friendlyError(msg) { const e = new Error(msg); e.friendly = true; retur
 
 async function uploadPdfToStorage(file, folder) {
   if (file.size > MAX_PDF_BYTES) {
-    throw friendlyError(`PDF muito grande (${fmtFileSize(file.size)}). O limite no plano gratuito é cerca de 700 KB. Comprima o arquivo e tente de novo.`);
+    throw friendlyError(`PDF muito grande (${fmtFileSize(file.size)}). O limite é ${fmtFileSize(MAX_PDF_BYTES)}. Comprima o arquivo e tente de novo.`);
   }
-  const data = await fileToBase64(file);
-  const save = db.collection('arquivos').add({
-    nome: file.name, pasta: folder, tamanho: fmtFileSize(file.size), tipo: 'application/pdf', data,
+  const total = Math.max(1, Math.ceil(file.size / CHUNK_BYTES));
+  const chunks = [];
+  for (let i = 0; i < total; i++) {
+    chunks.push(await blobToBase64(file.slice(i * CHUNK_BYTES, (i + 1) * CHUNK_BYTES)));
+  }
+  const fileRef = db.collection('arquivos').doc();
+  const batch = db.batch();
+  batch.set(fileRef, {
+    nome: file.name, pasta: folder, tamanho: fmtFileSize(file.size), bytes: file.size,
+    tipo: 'application/pdf', partes: total,
     criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
   });
-  const ref = await Promise.race([
-    save,
-    new Promise((_, rej) => setTimeout(() => rej(friendlyError('O envio não respondeu a tempo. Verifique a conexão e tente novamente.')), 20000)),
+  chunks.forEach((data, i) => batch.set(fileRef.collection('partes').doc(String(i).padStart(3, '0')), {i, data}));
+  await Promise.race([
+    batch.commit(),
+    new Promise((_, rej) => setTimeout(() => rej(friendlyError('O envio não respondeu a tempo. Verifique a conexão e tente novamente.')), 45000)),
   ]);
-  return {id: ref.id, nome: file.name, tamanho: fmtFileSize(file.size)};
+  return {id: fileRef.id, nome: file.name, tamanho: fmtFileSize(file.size)};
 }
 
-// Abre o PDF guardado: busca o arquivo e mostra numa nova aba.
+// Abre o PDF guardado: junta os pedaços e mostra numa nova aba.
 async function openPdf(e, id) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   if (!id) return;
   const w = window.open('', '_blank');
   try {
-    const snap = await db.collection('arquivos').doc(id).get();
+    const fileRef = db.collection('arquivos').doc(id);
+    const snap = await fileRef.get();
     if (!snap.exists) throw new Error('not found');
-    const bin = atob(snap.data().data);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+    const meta = snap.data();
+    const b64parts = meta.data
+      ? [meta.data] // formato antigo (arquivo inteiro no próprio documento)
+      : (await fileRef.collection('partes').orderBy('i').get()).docs.map(d => d.data().data);
+    const blobParts = b64parts.map(b64 => {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes;
+    });
+    const url = URL.createObjectURL(new Blob(blobParts, {type: 'application/pdf'}));
     if (w) w.location.href = url; else window.location.href = url;
   } catch (err) {
     console.error(err);
