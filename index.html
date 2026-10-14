@@ -402,7 +402,7 @@ function App() {
       return;
     }
     if (m.status === 'interno') {
-      window.location.href = m.key + '.html';
+      window.open(m.key + '.html', '_blank', 'noopener');
       return;
     }
     setPage(m.key);
