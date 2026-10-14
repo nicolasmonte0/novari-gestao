@@ -10,7 +10,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -196,11 +195,9 @@ const FIREBASE_CONFIG = {
   appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
 };
 let db = null;
-let storage = null;
 try {
   if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
   db = firebase.firestore();
-  storage = firebase.storage();
 } catch(e) { console.error(e); }
 
 const PAINEL_URL = "./";
@@ -387,7 +384,11 @@ function parseCartaoCNPJ(rows) {
   return out;
 }
 
-/* ── Armazenamento de PDFs (Firebase Storage) ───────────── */
+/* ── Armazenamento de PDFs (Firestore, plano gratuito) ───────────── */
+// Os PDFs ficam na coleção "arquivos" (em base64) para não precisar do Firebase Storage,
+// que exige plano pago. Limite do Firestore: ~1 MB por documento => ~700 KB por PDF.
+const MAX_PDF_BYTES = 700 * 1024;
+
 function fmtFileSize(bytes) {
   if (!bytes) return '';
   const mb = bytes / 1048576;
@@ -395,27 +396,51 @@ function fmtFileSize(bytes) {
   return Math.max(1, Math.round(bytes / 1024)) + ' KB';
 }
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+function friendlyError(msg) { const e = new Error(msg); e.friendly = true; return e; }
+
 async function uploadPdfToStorage(file, folder) {
-  const safeName = file.name.replace(/[^\w.\-]+/g, '_');
-  const path = `administrativo/${folder}/${Date.now()}_${safeName}`;
-  const ref = storage.ref().child(path);
-  // Guarda de tempo: se o Storage não estiver habilitado no projeto, a requisição
-  // falha no CORS e o SDK do Firebase pode nunca rejeitar a Promise sozinho — sem
-  // isso a tela fica presa em "Enviando..." para sempre.
-  const withTimeout = (p, ms, msg) => Promise.race([
-    p,
-    new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms)),
-  ]);
-  try {
-    await withTimeout(ref.put(file, {contentType: 'application/pdf'}), 20000, 'TIMEOUT_UPLOAD');
-  } catch (e) {
-    if (e && e.message === 'TIMEOUT_UPLOAD') {
-      throw new Error('O envio não respondeu a tempo. É provável que o Firebase Storage ainda não esteja habilitado neste projeto (fale com quem administra o sistema).');
-    }
-    throw e;
+  if (file.size > MAX_PDF_BYTES) {
+    throw friendlyError(`PDF muito grande (${fmtFileSize(file.size)}). O limite no plano gratuito é cerca de 700 KB. Comprima o arquivo e tente de novo.`);
   }
-  const url = await withTimeout(ref.getDownloadURL(), 15000, 'TIMEOUT_URL');
-  return {url, path, nome: file.name, tamanho: fmtFileSize(file.size)};
+  const data = await fileToBase64(file);
+  const save = db.collection('arquivos').add({
+    nome: file.name, pasta: folder, tamanho: fmtFileSize(file.size), tipo: 'application/pdf', data,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  const ref = await Promise.race([
+    save,
+    new Promise((_, rej) => setTimeout(() => rej(friendlyError('O envio não respondeu a tempo. Verifique a conexão e tente novamente.')), 20000)),
+  ]);
+  return {id: ref.id, nome: file.name, tamanho: fmtFileSize(file.size)};
+}
+
+// Abre o PDF guardado: busca o arquivo e mostra numa nova aba.
+async function openPdf(e, id) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  if (!id) return;
+  const w = window.open('', '_blank');
+  try {
+    const snap = await db.collection('arquivos').doc(id).get();
+    if (!snap.exists) throw new Error('not found');
+    const bin = atob(snap.data().data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+    if (w) w.location.href = url; else window.location.href = url;
+  } catch (err) {
+    console.error(err);
+    if (w) w.close();
+    alert('Não foi possível abrir o PDF.');
+  }
 }
 
 // Procura uma data (dd/mm/aaaa) próxima de alguma das palavras-chave dadas
@@ -464,7 +489,7 @@ function suggestNomeFromFile(filename) {
   return filename.replace(/\.pdf$/i, '').replace(/[_\-]+/g, ' ').replace(/\s+/g,' ').trim();
 }
 
-// Área de arrastar/soltar ou selecionar um PDF: envia para o Storage e
+// Área de arrastar/soltar ou selecionar um PDF: guarda no Firestore e
 // devolve o texto extraído para quem usa (cada formulário decide o que preencher).
 function PdfDropZone({folder, label, onResult}) {
   const [busy, setBusy] = useState(false);
@@ -487,7 +512,7 @@ function PdfDropZone({folder, label, onResult}) {
       setNote({ok:true, msg:`"${file.name}" anexado e analisado.`});
     } catch(e) {
       console.error(e);
-      const friendly = (e && e.message && e.message.includes('Storage')) ? e.message : 'Erro ao enviar o PDF. Verifique a conexão e tente novamente.';
+      const friendly = (e && e.friendly) ? e.message : 'Erro ao enviar o PDF. Verifique a conexão e tente novamente.';
       setNote({ok:false, msg:friendly});
     } finally { setBusy(false); }
   }
@@ -613,9 +638,9 @@ function EmpresaTab() {
             ))}
           </div>
         )}
-        {empresa && empresa.pdfUrl && (
+        {empresa && empresa.pdfId && (
           <div style={{marginTop:16}}>
-            <a className="pdf-link" href={empresa.pdfUrl} target="_blank" rel="noopener"><Icon name="file" className="ic" style={{width:13,height:13}}/> {empresa.pdfNome || 'Ver Cartão CNPJ'}</a>
+            <a className="pdf-link" href="#" onClick={e=>openPdf(e, empresa.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {empresa.pdfNome || 'Ver Cartão CNPJ'}</a>
           </div>
         )}
       </div>
@@ -626,7 +651,7 @@ function EmpresaTab() {
 
 function EmpresaForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {razaoSocial:'',nomeFantasia:'',cnpj:'',ie:'',im:'',cnae:'',endereco:'',telefone:'',email:'',responsavel:'',pdfUrl:'',pdfNome:''};
+  const empty = {razaoSocial:'',nomeFantasia:'',cnpj:'',ie:'',im:'',cnae:'',endereco:'',telefone:'',email:'',responsavel:'',pdfId:'',pdfNome:''};
   const [form, setForm] = useState(data ? {...empty,...data} : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -634,7 +659,7 @@ function EmpresaForm({data, onClose}) {
 
   function handlePdfResult({uploaded, rows}) {
     const found = parseCartaoCNPJ(rows);
-    setForm(f => ({...f, ...found, pdfUrl: uploaded.url, pdfNome: uploaded.nome}));
+    setForm(f => ({...f, ...found, pdfId: uploaded.id, pdfNome: uploaded.nome}));
   }
 
   async function save() {
@@ -653,7 +678,7 @@ function EmpresaForm({data, onClose}) {
     <Dialog title={isEdit ? 'Editar Empresa' : 'Cadastrar Empresa'} onClose={onClose} onSave={save} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="empresa" label="Importar do Cartão CNPJ" onResult={handlePdfResult} />
-        {form.pdfUrl && <a className="pdf-link" href={form.pdfUrl} target="_blank" rel="noopener"><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
+        {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
         <div className="f"><label>Razão Social *</label><input className="inp" value={form.razaoSocial} onChange={e=>set('razaoSocial',e.target.value)}/></div>
         <div className="row2">
           <div className="f"><label>Nome Fantasia</label><input className="inp" value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)}/></div>
@@ -704,7 +729,7 @@ function CertidoesTab() {
                       <td>{c.validade || '—'}</td>
                       <td><span className={`status ${st.cls}`}><span className={`dot ${st.cls}`}></span> {st.txt}</span></td>
                       <td style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
-                        {c.pdfUrl && <a className="pdf-view-btn" href={c.pdfUrl} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
+                        {c.pdfId && <a className="pdf-view-btn" href="#" onClick={e=>openPdf(e, c.pdfId)} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
                         <button className="btn sm" onClick={() => {setEditItem(c); setShowForm(true);}}><Icon name="edit" className="ic" style={{width:13,height:13}}/></button>
                       </td>
                     </tr>
@@ -722,7 +747,7 @@ function CertidoesTab() {
 
 function CertidaoForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {nome:'', emissao:'', validade:'', pdfUrl:'', pdfNome:''};
+  const empty = {nome:'', emissao:'', validade:'', pdfId:'', pdfNome:''};
   const [form, setForm] = useState(data ? {...empty,...data} : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -738,7 +763,7 @@ function CertidaoForm({data, onClose}) {
       nome: f.nome.trim() || nomeGuess || f.nome,
       validade: f.validade || validadeGuess || (dates.length ? dates[dates.length-1] : f.validade),
       emissao: f.emissao || emissaoGuess || (dates.length ? dates[0] : f.emissao),
-      pdfUrl: uploaded.url,
+      pdfId: uploaded.id,
       pdfNome: uploaded.nome,
     }));
   }
@@ -747,7 +772,7 @@ function CertidaoForm({data, onClose}) {
     if (!form.nome.trim()) {setErr('Informe o nome da certidão.'); return;}
     setErr(''); setSaving(true);
     try {
-      const d = {nome:form.nome.trim(), emissao:(form.emissao||'').trim(), validade:(form.validade||'').trim(), pdfUrl:form.pdfUrl||'', pdfNome:form.pdfNome||''};
+      const d = {nome:form.nome.trim(), emissao:(form.emissao||'').trim(), validade:(form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('certidoes').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('certidoes').add(d); }
       onClose();
@@ -765,7 +790,7 @@ function CertidaoForm({data, onClose}) {
     <Dialog title={isEdit ? 'Editar Certidão' : 'Nova Certidão'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="certidoes" label="Importar certidão em PDF" onResult={handlePdfResult} />
-        {form.pdfUrl && <a className="pdf-link" href={form.pdfUrl} target="_blank" rel="noopener"><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
+        {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
         <div className="f"><label>Nome da Certidão *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: CND Federal (PGFN/RFB)"/></div>
         <div className="row2">
           <div className="f"><label>Emissão (dd/mm/aaaa)</label><input className="inp" value={form.emissao} onChange={e=>set('emissao',e.target.value)} placeholder="15/04/2026"/></div>
@@ -801,7 +826,7 @@ function DocumentosTab() {
                   <h4>{d.nome}</h4>
                   <p>{[d.formato, d.tamanho, d.dataAtualizacao].filter(Boolean).join(' · ')}</p>
                 </div>
-                {d.pdfUrl && <a className="pdf-view-btn" href={d.pdfUrl} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
+                {d.pdfId && <a className="pdf-view-btn" href="#" onClick={e=>openPdf(e, d.pdfId)} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
               </div>
             ))}
           </div>
@@ -814,7 +839,7 @@ function DocumentosTab() {
 
 function DocumentoForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {nome:'', tipo:'pdf', formato:'PDF', tamanho:'', dataAtualizacao:'', pdfUrl:'', pdfNome:''};
+  const empty = {nome:'', tipo:'pdf', formato:'PDF', tamanho:'', dataAtualizacao:'', pdfId:'', pdfNome:''};
   const [form, setForm] = useState(data ? {...empty,...data} : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -828,7 +853,7 @@ function DocumentoForm({data, onClose}) {
       formato: 'PDF',
       tamanho: fmtFileSize(file.size),
       dataAtualizacao: f.dataAtualizacao || fmtDate(new Date()),
-      pdfUrl: uploaded.url,
+      pdfId: uploaded.id,
       pdfNome: uploaded.nome,
     }));
   }
@@ -837,7 +862,7 @@ function DocumentoForm({data, onClose}) {
     if (!form.nome.trim()) {setErr('Informe o nome do documento.'); return;}
     setErr(''); setSaving(true);
     try {
-      const d = {nome:form.nome.trim(), tipo:(form.tipo||'pdf').trim(), formato:(form.formato||'').trim(), tamanho:(form.tamanho||'').trim(), dataAtualizacao:(form.dataAtualizacao||'').trim(), pdfUrl:form.pdfUrl||'', pdfNome:form.pdfNome||''};
+      const d = {nome:form.nome.trim(), tipo:(form.tipo||'pdf').trim(), formato:(form.formato||'').trim(), tamanho:(form.tamanho||'').trim(), dataAtualizacao:(form.dataAtualizacao||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('documentos').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('documentos').add(d); }
       onClose();
@@ -855,7 +880,7 @@ function DocumentoForm({data, onClose}) {
     <Dialog title={isEdit ? 'Editar Documento' : 'Novo Documento'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="documentos" label="Arraste o documento em PDF" onResult={handlePdfResult} />
-        {form.pdfUrl && <a className="pdf-link" href={form.pdfUrl} target="_blank" rel="noopener"><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
+        {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
         <div className="f"><label>Nome do Documento *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Contrato Social — Consolidado"/></div>
         <div className="row2">
           <div className="f">
@@ -902,7 +927,7 @@ function LicencasTab() {
                       <td>{l.validade || '—'}</td>
                       <td><span className={`status ${st.cls}`}><span className={`dot ${st.cls}`}></span> {st.txt}</span></td>
                       <td style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
-                        {l.pdfUrl && <a className="pdf-view-btn" href={l.pdfUrl} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
+                        {l.pdfId && <a className="pdf-view-btn" href="#" onClick={e=>openPdf(e, l.pdfId)} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
                         <button className="btn sm" onClick={() => {setEditItem(l); setShowForm(true);}}><Icon name="edit" className="ic" style={{width:13,height:13}}/></button>
                       </td>
                     </tr>
@@ -920,7 +945,7 @@ function LicencasTab() {
 
 function LicencaForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {nome:'', orgao:'', validade:'', pdfUrl:'', pdfNome:''};
+  const empty = {nome:'', orgao:'', validade:'', pdfId:'', pdfNome:''};
   const [form, setForm] = useState(data ? {...empty,...data} : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -935,7 +960,7 @@ function LicencaForm({data, onClose}) {
       nome: f.nome.trim() || suggestNomeFromFile(file.name),
       orgao: f.orgao || orgaoGuess || f.orgao,
       validade: f.validade || validadeGuess || (dates.length ? dates[dates.length-1] : f.validade),
-      pdfUrl: uploaded.url,
+      pdfId: uploaded.id,
       pdfNome: uploaded.nome,
     }));
   }
@@ -944,7 +969,7 @@ function LicencaForm({data, onClose}) {
     if (!form.nome.trim()) {setErr('Informe o nome da licença.'); return;}
     setErr(''); setSaving(true);
     try {
-      const d = {nome:form.nome.trim(), orgao:(form.orgao||'').trim(), validade:(form.validade||'').trim(), pdfUrl:form.pdfUrl||'', pdfNome:form.pdfNome||''};
+      const d = {nome:form.nome.trim(), orgao:(form.orgao||'').trim(), validade:(form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('licencas').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('licencas').add(d); }
       onClose();
@@ -962,7 +987,7 @@ function LicencaForm({data, onClose}) {
     <Dialog title={isEdit ? 'Editar Licença' : 'Nova Licença'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="licencas" label="Arraste a licença/alvará em PDF" onResult={handlePdfResult} />
-        {form.pdfUrl && <a className="pdf-link" href={form.pdfUrl} target="_blank" rel="noopener"><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
+        {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
         <div className="f"><label>Nome da Licença / Alvará *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Alvará de Funcionamento"/></div>
         <div className="row2">
           <div className="f"><label>Órgão</label><input className="inp" value={form.orgao} onChange={e=>set('orgao',e.target.value)} placeholder="Ex: Prefeitura de Manaus"/></div>
@@ -1001,7 +1026,7 @@ function PatrimonioTab() {
                   {(p.placa || p.aquisicao) && <span>{[p.placa && `Placa: ${p.placa}`, p.aquisicao && `Aquisição: ${p.aquisicao}`].filter(Boolean).join(' · ')}</span>}
                 </div>
                 <div className="pat-val">{fmtBRL(p.valor)}</div>
-                {p.pdfUrl && <a className="pdf-link" style={{marginTop:8}} href={p.pdfUrl} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()}><Icon name="file" className="ic" style={{width:12,height:12}}/> {p.pdfNome || 'Nota fiscal'}</a>}
+                {p.pdfId && <a className="pdf-link" style={{marginTop:8}} href="#" onClick={e=>openPdf(e, p.pdfId)}><Icon name="file" className="ic" style={{width:12,height:12}}/> {p.pdfNome || 'Nota fiscal'}</a>}
               </div>
             ))}
           </div>
@@ -1014,21 +1039,21 @@ function PatrimonioTab() {
 
 function PatrimonioForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {nome:'', detalhes:'', placa:'', aquisicao:'', valor:'', pdfUrl:'', pdfNome:''};
+  const empty = {nome:'', detalhes:'', placa:'', aquisicao:'', valor:'', pdfId:'', pdfNome:''};
   const [form, setForm] = useState(data ? {...empty,...data, valor: String(data.valor||'')} : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
 
   function handlePdfResult({file, uploaded}) {
-    setForm(f => ({...f, nome: f.nome.trim() || suggestNomeFromFile(file.name), pdfUrl: uploaded.url, pdfNome: uploaded.nome}));
+    setForm(f => ({...f, nome: f.nome.trim() || suggestNomeFromFile(file.name), pdfId: uploaded.id, pdfNome: uploaded.nome}));
   }
 
   async function save() {
     if (!form.nome.trim()) {setErr('Informe o nome do item.'); return;}
     setErr(''); setSaving(true);
     try {
-      const d = {nome:form.nome.trim(), detalhes:(form.detalhes||'').trim(), placa:(form.placa||'').trim(), aquisicao:(form.aquisicao||'').trim(), valor:Number(form.valor)||0, pdfUrl:form.pdfUrl||'', pdfNome:form.pdfNome||''};
+      const d = {nome:form.nome.trim(), detalhes:(form.detalhes||'').trim(), placa:(form.placa||'').trim(), aquisicao:(form.aquisicao||'').trim(), valor:Number(form.valor)||0, pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('patrimonio').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('patrimonio').add(d); }
       onClose();
@@ -1046,7 +1071,7 @@ function PatrimonioForm({data, onClose}) {
     <Dialog title={isEdit ? 'Editar Item' : 'Novo Item'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="patrimonio" label="Anexar nota fiscal / comprovante (PDF)" onResult={handlePdfResult} />
-        {form.pdfUrl && <a className="pdf-link" href={form.pdfUrl} target="_blank" rel="noopener"><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
+        {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
         <div className="f"><label>Nome / Descrição *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Impressora UV Flatbed"/></div>
         <div className="f"><label>Detalhes (marca, modelo)</label><input className="inp" value={form.detalhes} onChange={e=>set('detalhes',e.target.value)} placeholder="Ex: Roland · LEJ-640FT"/></div>
         <div className="row2">
