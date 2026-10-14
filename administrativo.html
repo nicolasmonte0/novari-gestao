@@ -399,8 +399,22 @@ async function uploadPdfToStorage(file, folder) {
   const safeName = file.name.replace(/[^\w.\-]+/g, '_');
   const path = `administrativo/${folder}/${Date.now()}_${safeName}`;
   const ref = storage.ref().child(path);
-  await ref.put(file, {contentType: 'application/pdf'});
-  const url = await ref.getDownloadURL();
+  // Guarda de tempo: se o Storage não estiver habilitado no projeto, a requisição
+  // falha no CORS e o SDK do Firebase pode nunca rejeitar a Promise sozinho — sem
+  // isso a tela fica presa em "Enviando..." para sempre.
+  const withTimeout = (p, ms, msg) => Promise.race([
+    p,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms)),
+  ]);
+  try {
+    await withTimeout(ref.put(file, {contentType: 'application/pdf'}), 20000, 'TIMEOUT_UPLOAD');
+  } catch (e) {
+    if (e && e.message === 'TIMEOUT_UPLOAD') {
+      throw new Error('O envio não respondeu a tempo. É provável que o Firebase Storage ainda não esteja habilitado neste projeto (fale com quem administra o sistema).');
+    }
+    throw e;
+  }
+  const url = await withTimeout(ref.getDownloadURL(), 15000, 'TIMEOUT_URL');
   return {url, path, nome: file.name, tamanho: fmtFileSize(file.size)};
 }
 
@@ -473,7 +487,8 @@ function PdfDropZone({folder, label, onResult}) {
       setNote({ok:true, msg:`"${file.name}" anexado e analisado.`});
     } catch(e) {
       console.error(e);
-      setNote({ok:false, msg:'Erro ao enviar o PDF. Verifique a conexão e tente novamente.'});
+      const friendly = (e && e.message && e.message.includes('Storage')) ? e.message : 'Erro ao enviar o PDF. Verifique a conexão e tente novamente.';
+      setNote({ok:false, msg:friendly});
     } finally { setBusy(false); }
   }
 
