@@ -243,66 +243,133 @@ if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 }
 
-async function extractPdfLines(file) {
+// Extrai linhas do PDF preservando a posição horizontal (x) de cada item,
+// necessário porque o Cartão CNPJ tem várias colunas na mesma altura
+// (ex: "LOGRADOURO | NÚMERO | COMPLEMENTO" com os valores também lado a lado).
+async function extractPdfRows(file) {
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data: buf}).promise;
-  const lines = [];
+  const rows = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const rows = {};
+    const byY = {};
     content.items.forEach(it => {
+      const str = it.str;
+      if (!str || !str.trim()) return;
       const y = Math.round(it.transform[5] / 3) * 3; // agrupa itens próximos na mesma linha
-      if (!rows[y]) rows[y] = [];
-      rows[y].push(it);
+      if (!byY[y]) byY[y] = [];
+      byY[y].push({str, x: it.transform[4]});
     });
-    Object.keys(rows).map(Number).sort((a,b) => b - a).forEach(y => {
-      const row = rows[y].sort((a,b) => a.transform[4] - b.transform[4]);
-      const text = row.map(it => it.str).join(' ').replace(/\s+/g,' ').trim();
-      if (text) lines.push(text);
+    Object.keys(byY).map(Number).sort((a,b) => b - a).forEach(y => {
+      rows.push({ y, items: byY[y].sort((a,b) => a.x - b.x) });
     });
   }
-  return lines;
+  return rows;
 }
 
-function parseCartaoCNPJ(lines) {
-  const full = lines.join('\n');
+function rowText(row) {
+  return row.items.map(it => it.str).join(' ').replace(/\s+/g,' ').trim();
+}
+
+// Dado um conjunto de rótulos esperados na MESMA linha, devolve a posição x de cada um
+// (usado como fronteira de coluna para separar os valores da linha seguinte).
+function colBoundaries(row, labelDefs) {
+  const found = [];
+  labelDefs.forEach(({key, re}) => {
+    const it = row.items.find(i => re.test(i.str.trim()));
+    if (it) found.push({key, x: it.x});
+  });
+  return found.sort((a,b) => a.x - b.x);
+}
+
+// Distribui os itens de uma linha de valores entre as colunas, pela posição x mais próxima.
+function splitByBoundaries(row, boundaries) {
   const out = {};
+  boundaries.forEach(b => out[b.key] = []);
+  row.items.forEach(it => {
+    let assigned = boundaries[0];
+    boundaries.forEach(b => { if (it.x >= b.x - 10) assigned = b; });
+    out[assigned.key].push(it.str);
+  });
+  Object.keys(out).forEach(k => out[k] = out[k].join(' ').replace(/\s+/g,' ').trim());
+  return out;
+}
+
+function parseCartaoCNPJ(rows) {
+  const full = rows.map(rowText).join('\n');
+  const out = {};
+  const tmp = {};
 
   const cnpjMatch = full.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
   if (cnpjMatch) out.cnpj = cnpjMatch[0];
 
-  function findValue(labelRe) {
-    for (let i = 0; i < lines.length; i++) {
-      if (!labelRe.test(lines[i])) continue;
-      const rem = lines[i].replace(labelRe, '').trim();
-      if (rem.length > 2 && !/^[:\-\s]*$/.test(rem)) return rem;
-      for (let j = i + 1; j < lines.length && j < i + 3; j++) {
-        if (lines[j] && lines[j].length > 1 && !/^\*+$/.test(lines[j])) return lines[j];
+  for (let i = 0; i < rows.length; i++) {
+    const t = rowText(rows[i]);
+    const next = rows[i + 1];
+
+    if (!out.razaoSocial && /^NOME EMPRESARIAL/i.test(t) && next) {
+      out.razaoSocial = rowText(next);
+    }
+
+    if (!out.nomeFantasia && /T[ÍI]TULO DO ESTABELECIMENTO/i.test(t) && next) {
+      const b = colBoundaries(rows[i], [{key:'nome', re:/T[ÍI]TULO/i}, {key:'porte', re:/^PORTE$/i}]);
+      if (b.length >= 2) {
+        const parts = splitByBoundaries(next, b);
+        if (parts.nome) out.nomeFantasia = parts.nome;
+      } else {
+        out.nomeFantasia = rowText(next);
       }
     }
-    return null;
+
+    if (!out.cnae && /C[ÓO]DIGO E DESCRI[ÇC][ÃA]O DA ATIVIDADE ECON[ÔO]MICA PRINCIPAL/i.test(t) && next) {
+      out.cnae = rowText(next);
+    }
+
+    if (!tmp.enderecoRow && /^LOGRADOURO/i.test(t) && /N[ÚU]MERO/i.test(t) && next) {
+      const b = colBoundaries(rows[i], [{key:'log', re:/^LOGRADOURO$/i}, {key:'num', re:/^N[ÚU]MERO$/i}, {key:'comp', re:/^COMPLEMENTO/i}]);
+      if (b.length >= 2) {
+        const parts = splitByBoundaries(next, b);
+        tmp.logradouro = parts.log || '';
+        tmp.numero = parts.num || '';
+        tmp.complemento = parts.comp || '';
+      }
+      tmp.enderecoRow = true;
+    }
+
+    if (!tmp.cepRow && /^CEP/i.test(t) && /BAIRRO/i.test(t) && next) {
+      const b = colBoundaries(rows[i], [{key:'cep', re:/^CEP$/i}, {key:'bairro', re:/BAIRRO/i}, {key:'municipio', re:/MUNIC[ÍI]PIO/i}, {key:'uf', re:/^UF$/i}]);
+      if (b.length >= 2) {
+        const parts = splitByBoundaries(next, b);
+        tmp.cep = parts.cep || '';
+        tmp.bairro = parts.bairro || '';
+        tmp.municipio = parts.municipio || '';
+        tmp.uf = parts.uf || '';
+      }
+      tmp.cepRow = true;
+    }
+
+    if (!tmp.contatoRow && /ENDERE[ÇC]O ELETR[ÔO]NICO/i.test(t) && next) {
+      const b = colBoundaries(rows[i], [{key:'email', re:/ELETR[ÔO]NICO/i}, {key:'tel', re:/^TELEFONE$/i}]);
+      if (b.length >= 2) {
+        const parts = splitByBoundaries(next, b);
+        if (parts.email) out.email = parts.email;
+        if (parts.tel) out.telefone = parts.tel;
+      } else {
+        const vt = rowText(next);
+        if (vt.includes('@')) out.email = vt; else out.telefone = vt;
+      }
+      tmp.contatoRow = true;
+    }
   }
 
-  out.razaoSocial    = findValue(/^NOME EMPRESARIAL\s*/i);
-  out.nomeFantasia   = findValue(/T[ÍI]TULO DO ESTABELECIMENTO[^A-Z]*\(?NOME DE FANTASIA\)?\s*/i);
-  out.cnae           = findValue(/C[ÓO]DIGO E DESCRI[ÇC][ÃA]O DA ATIVIDADE ECON[ÔO]MICA PRINCIPAL\s*/i);
-  out.email          = findValue(/ENDERE[ÇC]O ELETR[ÔO]NICO\s*/i);
-  out.telefone       = findValue(/^TELEFONE\s*/i);
-
-  const logradouro = findValue(/^LOGRADOURO\s*/i);
-  const numero     = findValue(/^N[ÚU]MERO\s*$/i);
-  const complemento = findValue(/^COMPLEMENTO\s*/i);
-  const bairro     = findValue(/BAIRRO\s*\/?\s*DISTRITO\s*/i);
-  const municipioUf = findValue(/^MUNIC[ÍI]PIO\s*/i);
-  const cep        = findValue(/^CEP\s*/i);
   const endereco = [
-    logradouro,
-    numero && `nº ${numero}`,
-    complemento,
-    bairro,
-    municipioUf,
-    cep && `CEP ${cep}`,
+    tmp.logradouro,
+    tmp.numero && `nº ${tmp.numero}`,
+    tmp.complemento,
+    tmp.bairro,
+    [tmp.municipio, tmp.uf].filter(Boolean).join(' - '),
+    tmp.cep && `CEP ${tmp.cep}`,
   ].filter(Boolean).join(', ');
   if (endereco) out.endereco = endereco;
 
@@ -437,8 +504,8 @@ function EmpresaForm({data, onClose}) {
     if (!file) return;
     setImportNote(null); setImporting(true);
     try {
-      const lines = await extractPdfLines(file);
-      const found = parseCartaoCNPJ(lines);
+      const rows = await extractPdfRows(file);
+      const found = parseCartaoCNPJ(rows);
       const keys = Object.keys(found);
       if (keys.length === 0) {
         setImportNote({ok:false, msg:'Não consegui identificar os campos neste PDF. Confira se é o Cartão CNPJ (Comprovante de Inscrição e Situação Cadastral) e preencha manualmente.'});
