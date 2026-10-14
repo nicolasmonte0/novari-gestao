@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Estoque - Novari Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#E9ECF2; --hover:#F3F5F9;
+  --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
+  --line:#DFE3EA; --line-strong:#C8CFDB;
+  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7;
+  --brand-red:#CE1B21; --brand-blue:#66B2E5;
+  --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --warn-bg:#FFF8EB; --ok:#067647; --ok-bg:#ECFDF3;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0D1322; --surface:#151C2E; --col:#111828; --hover:#1C2540;
+    --ink:#E8ECF5; --ink-2:#AAB3C8; --muted:#8B96AE;
+    --line:#252E46; --line-strong:#34405C;
+    --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5;
+    --brand-red:#FF6B61; --brand-blue:#66B2E5;
+    --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --warn-bg:#3A2E18; --ok:#5BD29A; --ok-bg:#183A28;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0;text-decoration:none}
+.logo-img{height:38px;width:auto;display:block}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2;color:var(--ink);text-align:left}
+.brand-sub{color:var(--muted);font-size:12.5px;text-align:left}
+
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;padding:0;margin-bottom:10px;text-decoration:none}
+.back:hover{color:var(--ink)}
+.page-h{margin:0 0 20px}
+.page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.page-h p{margin:0;color:var(--muted);font-size:13px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13.5px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn.danger{color:var(--alert);border-color:var(--alert)}
+.btn.danger:hover{background:var(--alert-bg)}
+.btn.saida-btn{color:var(--alert);border-color:var(--alert)}
+.btn.saida-btn:hover{background:var(--alert-bg)}
+.btn.sm{height:30px;font-size:12px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* Summary */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.summary-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.summary-card .label{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.summary-card .value{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.summary-card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:2px solid var(--line);margin-bottom:20px;gap:0;overflow-x:auto}
+.tab{padding:10px 18px;border:0;background:none;color:var(--muted);font-weight:600;font-size:13.5px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Top bar */
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+
+/* Search & filters */
+.tools{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:0 12px}
+.search input{flex:1;border:0;background:none;height:40px;font-size:14px;color:var(--ink);outline:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--line-strong);border-radius:20px;background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.chip b{font-weight:700}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr{cursor:pointer}
+.tbl tbody tr:hover td{background:var(--hover)}
+
+/* Status badges */
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:20px}
+.status.ok{background:var(--ok-bg);color:var(--ok)}
+.status.warn{background:var(--warn-bg);color:var(--warn)}
+.status.alert{background:var(--alert-bg);color:var(--alert)}
+
+/* Category badge */
+.cat{display:inline-flex;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--col);color:var(--ink-2)}
+
+/* Movement log */
+.mov-list{display:flex;flex-direction:column;gap:8px}
+.mov-item{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer}
+.mov-item:hover{border-color:var(--line-strong)}
+.mov-icon{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-size:16px;flex:none}
+.mov-icon.entrada{background:var(--ok-bg);color:var(--ok)}
+.mov-icon.saida{background:var(--alert-bg);color:var(--alert)}
+.mov-info{flex:1;min-width:0}
+.mov-info h4{margin:0 0 2px;font-size:14px;font-weight:600}
+.mov-info p{margin:0;font-size:12px;color:var(--muted)}
+.mov-qty{font-weight:700;font-size:15px;white-space:nowrap}
+.mov-qty.entrada{color:var(--ok)}
+.mov-qty.saida{color:var(--alert)}
+
+/* Dialog */
+.ov{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,14,28,.55)}
+.dlg{width:520px;max-width:100%;max-height:92vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 10px}
+.dlg-h h2{margin:0;font-size:16px;font-weight:700}
+.dlg-b{padding:6px 22px 18px}
+.dlg-f{display:flex;gap:8px;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--line)}
+.dlg-f .right{display:flex;gap:8px}
+.x{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.x:hover{background:var(--hover);color:var(--ink)}
+.form{display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.f label{display:block;margin-bottom:5px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.inp:focus{border-color:var(--accent);outline:none}
+select.inp{appearance:auto}
+.err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+.loading{color:var(--muted);padding:30px 0;text-align:center}
+
+@media (max-width:820px){.row2,.row3{grid-template-columns:1fr}}
+@media (max-width:600px){.summary-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
+</svg>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useMemo} = React;
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PAINEL_URL = "./";
+const CATEGORIAS = ['Papelaria','Tinta','Embalagem','Equipamento','Outros'];
+const UNIDADES = ['Unidade','Resma','Folha','Cartucho','Litro','Rolo','Caixa','Pacote','Peça','Kg','Metro'];
+
+function Icon({name, className}) {
+  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+}
+
+/* ── Header (padrão) ─────────────────────── */
+function Header() {
+  return (
+    <header className="top">
+      <a href={PAINEL_URL} className="brand">
+        <img src="novari-icon.png" alt="Novari Print" className="logo-img" />
+        <div>
+          <div className="brand-name">Novari Print</div>
+          <div className="brand-sub">Gestão</div>
+        </div>
+      </a>
+    </header>
+  );
+}
+
+/* ── Dialog (padrão) ─────────────────────── */
+function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
+  return (
+    <div className="ov" onClick={e => {if(e.target===e.currentTarget) onClose();}}>
+      <div className="dlg" role="dialog" aria-modal="true">
+        <div className="dlg-h">
+          <h2>{title}</h2>
+          <button className="x" onClick={onClose}><Icon name="x"/></button>
+        </div>
+        <div className="dlg-b">
+          {children}
+          {err && <p className="err">{err}</p>}
+        </div>
+        <div className="dlg-f">
+          <div>{onDelete && <button className="btn danger" onClick={onDelete} disabled={saving}><Icon name="trash"/> Excluir</button>}</div>
+          <div className="right">
+            <button className="btn" onClick={onClose}>Cancelar</button>
+            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── useCollection hook ──────────────────── */
+function useCollection(name) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection(name).onSnapshot(snap => {
+      setItems(snap.docs.map(d => ({id:d.id, ...d.data()})));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, [name]);
+  return {items, loading};
+}
+
+/* ── Helpers ──────────────────────────────── */
+function fmtBRL(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('pt-BR');
+}
+
+function getStatus(qtdAtual, qtdMinima) {
+  const a = parseFloat(qtdAtual) || 0;
+  const m = parseFloat(qtdMinima) || 0;
+  if (a <= 0) return {cls:'alert', label:'Sem estoque'};
+  if (m > 0 && a <= m) return {cls:'warn', label:'Estoque baixo'};
+  return {cls:'ok', label:'Normal'};
+}
+
+/* ── Item Dialog ─────────────────────────── */
+const emptyItem = {nome:'', codigo:'', categoria:'Papelaria', qtdAtual:'', qtdMinima:'', unidade:'Unidade', custoUnitario:'', observacoes:''};
+
+function ItemDialog({initial, onClose, onSaved}) {
+  const isEdit = !!(initial && initial.id);
+  const [form, setForm] = useState(initial ? {...emptyItem, ...initial, qtdAtual:String(initial.qtdAtual??''), qtdMinima:String(initial.qtdMinima??''), custoUnitario:String(initial.custoUnitario??'')} : emptyItem);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  function set(k, v) { setForm(f => ({...f, [k]: v})); }
+
+  async function save() {
+    if (!form.nome.trim()) { setErr('Informe o nome do item.'); return; }
+    setErr(''); setSaving(true);
+    try {
+      const data = {
+        nome: form.nome.trim(),
+        codigo: form.codigo.trim(),
+        categoria: form.categoria,
+        qtdAtual: parseFloat(form.qtdAtual) || 0,
+        qtdMinima: parseFloat(form.qtdMinima) || 0,
+        unidade: form.unidade,
+        custoUnitario: parseFloat(form.custoUnitario) || 0,
+        observacoes: (form.observacoes || '').trim(),
+      };
+      if (isEdit) {
+        await db.collection('estoque_itens').doc(initial.id).update(data);
+      } else {
+        data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('estoque_itens').add(data);
+      }
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível salvar. Tente novamente.');
+    } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este item do estoque? Essa ação não pode ser desfeita.')) return;
+    setSaving(true);
+    try {
+      await db.collection('estoque_itens').doc(initial.id).delete();
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível excluir. Tente novamente.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      title={isEdit ? 'Editar item' : 'Novo item'}
+      onClose={onClose}
+      onSave={save}
+      onDelete={isEdit ? remove : null}
+      saving={saving}
+      err={err}
+    >
+      <div className="form">
+        <div className="f"><label>Nome do item *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Papel A4 75g" /></div>
+        <div className="row2">
+          <div className="f"><label>Código</label><input className="inp" value={form.codigo} onChange={e=>set('codigo',e.target.value)} placeholder="COD-001" /></div>
+          <div className="f">
+            <label>Categoria</label>
+            <select className="inp" value={form.categoria} onChange={e=>set('categoria',e.target.value)}>
+              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="row3">
+          <div className="f"><label>Qtd. atual</label><input className="inp" type="number" min="0" step="any" value={form.qtdAtual} onChange={e=>set('qtdAtual',e.target.value)} placeholder="0" /></div>
+          <div className="f"><label>Qtd. mínima</label><input className="inp" type="number" min="0" step="any" value={form.qtdMinima} onChange={e=>set('qtdMinima',e.target.value)} placeholder="0" /></div>
+          <div className="f">
+            <label>Unidade</label>
+            <select className="inp" value={form.unidade} onChange={e=>set('unidade',e.target.value)}>
+              {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="f"><label>Custo unitário (R$)</label><input className="inp" type="number" min="0" step="0.01" value={form.custoUnitario} onChange={e=>set('custoUnitario',e.target.value)} placeholder="0,00" /></div>
+        <div className="f"><label>Observações</label><textarea className="inp" rows="2" value={form.observacoes||''} onChange={e=>set('observacoes',e.target.value)} placeholder="Anotações sobre este item"></textarea></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── Movimentação Dialog ─────────────────── */
+function MovDialog({tipo: tipoInicial, itens, initial, onClose, onSaved}) {
+  const isEdit = !!(initial && initial.id);
+  const defaultForm = {tipo: tipoInicial || 'entrada', itemId:'', quantidade:'', descricao:'', data: new Date().toISOString().slice(0,10)};
+  const [form, setForm] = useState(initial ? {...defaultForm, ...initial, quantidade:String(initial.quantidade??''), data: initial.data ? (initial.data.toDate ? initial.data.toDate().toISOString().slice(0,10) : String(initial.data).slice(0,10)) : defaultForm.data} : defaultForm);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  function set(k, v) { setForm(f => ({...f, [k]: v})); }
+
+  async function save() {
+    if (!form.itemId) { setErr('Selecione um item.'); return; }
+    const qty = parseFloat(form.quantidade);
+    if (!qty || qty <= 0) { setErr('Informe a quantidade.'); return; }
+    setErr(''); setSaving(true);
+    try {
+      const item = itens.find(i => i.id === form.itemId);
+      const data = {
+        tipo: form.tipo,
+        itemId: form.itemId,
+        itemNome: item ? item.nome : '',
+        itemUnidade: item ? item.unidade : '',
+        quantidade: qty,
+        descricao: form.descricao.trim(),
+        data: new Date(form.data + 'T12:00:00'),
+      };
+      if (isEdit) {
+        await db.collection('estoque_movimentacoes').doc(initial.id).update(data);
+      } else {
+        data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('estoque_movimentacoes').add(data);
+      }
+      // Atualiza qtdAtual do item
+      if (item) {
+        const currentQtd = parseFloat(item.qtdAtual) || 0;
+        let newQtd;
+        if (isEdit) {
+          // Reverter movimentação anterior e aplicar nova
+          const oldQty = parseFloat(initial.quantidade) || 0;
+          const revert = initial.tipo === 'entrada' ? currentQtd - oldQty : currentQtd + oldQty;
+          newQtd = form.tipo === 'entrada' ? revert + qty : revert - qty;
+        } else {
+          newQtd = form.tipo === 'entrada' ? currentQtd + qty : currentQtd - qty;
+        }
+        await db.collection('estoque_itens').doc(form.itemId).update({qtdAtual: Math.max(0, newQtd)});
+      }
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível salvar. Tente novamente.');
+    } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir esta movimentação? A quantidade do item será revertida.')) return;
+    setSaving(true);
+    try {
+      // Reverte quantidade
+      const item = itens.find(i => i.id === initial.itemId);
+      if (item) {
+        const currentQtd = parseFloat(item.qtdAtual) || 0;
+        const qty = parseFloat(initial.quantidade) || 0;
+        const newQtd = initial.tipo === 'entrada' ? currentQtd - qty : currentQtd + qty;
+        await db.collection('estoque_itens').doc(initial.itemId).update({qtdAtual: Math.max(0, newQtd)});
+      }
+      await db.collection('estoque_movimentacoes').doc(initial.id).delete();
+      onSaved();
+    } catch(e) {
+      console.error(e);
+      setErr('Não foi possível excluir. Tente novamente.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      title={isEdit ? 'Editar movimentação' : (form.tipo === 'entrada' ? 'Nova entrada' : 'Nova saída')}
+      onClose={onClose}
+      onSave={save}
+      onDelete={isEdit ? remove : null}
+      saving={saving}
+      err={err}
+    >
+      <div className="form">
+        {!isEdit && (
+          <div className="f">
+            <label>Tipo</label>
+            <div style={{display:'flex',gap:8}}>
+              <button type="button" className={"btn sm" + (form.tipo==='entrada' ? ' primary' : '')} onClick={()=>set('tipo','entrada')}>↓ Entrada</button>
+              <button type="button" className={"btn sm" + (form.tipo==='saida' ? ' saida-btn' : '')} style={form.tipo==='saida'?{background:'var(--alert-bg)'}:{}} onClick={()=>set('tipo','saida')}>↑ Saída</button>
+            </div>
+          </div>
+        )}
+        <div className="f">
+          <label>Item *</label>
+          <select className="inp" value={form.itemId} onChange={e=>set('itemId',e.target.value)}>
+            <option value="">Selecione um item</option>
+            {itens.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(i => (
+              <option key={i.id} value={i.id}>{i.nome}{i.codigo ? ` (${i.codigo})` : ''}</option>
+            ))}
+          </select>
+        </div>
+        <div className="row2">
+          <div className="f"><label>Quantidade *</label><input className="inp" type="number" min="0.01" step="any" value={form.quantidade} onChange={e=>set('quantidade',e.target.value)} placeholder="0" /></div>
+          <div className="f"><label>Data</label><input className="inp" type="date" value={form.data} onChange={e=>set('data',e.target.value)} /></div>
+        </div>
+        <div className="f"><label>Descrição</label><input className="inp" value={form.descricao} onChange={e=>set('descricao',e.target.value)} placeholder="NF, pedido ou motivo" /></div>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ── App ──────────────────────────────────── */
+function App() {
+  const {items: itens, loading: loadingItens} = useCollection('estoque_itens');
+  const {items: movs, loading: loadingMovs} = useCollection('estoque_movimentacoes');
+  const [tab, setTab] = useState('itens');
+  const [busca, setBusca] = useState('');
+  const [catFiltro, setCatFiltro] = useState('Todos');
+  const [editItem, setEditItem] = useState(null);
+  const [editMov, setEditMov] = useState(null);
+  const [newMovTipo, setNewMovTipo] = useState(null);
+
+  // Itens sorted
+  const sortedItens = useMemo(() =>
+    [...itens].sort((a,b) => (a.nome||'').localeCompare(b.nome||''))
+  , [itens]);
+
+  // Category counts
+  const catCounts = useMemo(() => {
+    const c = {Todos: sortedItens.length};
+    CATEGORIAS.forEach(cat => { c[cat] = sortedItens.filter(i => i.categoria === cat).length; });
+    return c;
+  }, [sortedItens]);
+
+  // Filtered items
+  const filteredItens = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return sortedItens.filter(i =>
+      (catFiltro === 'Todos' || i.categoria === catFiltro) &&
+      (!q || (i.nome||'').toLowerCase().includes(q) || (i.codigo||'').toLowerCase().includes(q))
+    );
+  }, [sortedItens, catFiltro, busca]);
+
+  // Movimentações sorted by date desc
+  const sortedMovs = useMemo(() =>
+    [...movs].sort((a,b) => {
+      const da = a.data ? (a.data.toDate ? a.data.toDate() : new Date(a.data)) : new Date(0);
+      const db2 = b.data ? (b.data.toDate ? b.data.toDate() : new Date(b.data)) : new Date(0);
+      return db2 - da;
+    })
+  , [movs]);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const total = sortedItens.length;
+    const baixo = sortedItens.filter(i => { const s = getStatus(i.qtdAtual, i.qtdMinima); return s.cls === 'warn'; }).length;
+    const zero = sortedItens.filter(i => { const s = getStatus(i.qtdAtual, i.qtdMinima); return s.cls === 'alert'; }).length;
+    const valor = sortedItens.reduce((sum, i) => sum + ((parseFloat(i.qtdAtual)||0) * (parseFloat(i.custoUnitario)||0)), 0);
+    return {total, baixo, zero, valor};
+  }, [sortedItens]);
+
+  const loading = loadingItens || loadingMovs;
+
+  return (
+    <React.Fragment>
+      <Header />
+      <main className="wrap">
+        <a href={PAINEL_URL} className="back"><Icon name="back"/>Painel</a>
+
+        <div className="c-top">
+          <div className="page-h" style={{margin:0}}>
+            <h1>Estoque</h1>
+            <p>Controle manual de itens e movimentações.</p>
+          </div>
+          {tab === 'itens' && (
+            <button className="btn primary" onClick={() => setEditItem({})}><Icon name="plus"/>Novo item</button>
+          )}
+          {tab === 'movimentacoes' && (
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn primary" onClick={() => setNewMovTipo('entrada')}>↓ Entrada</button>
+              <button className="btn saida-btn" onClick={() => setNewMovTipo('saida')}>↑ Saída</button>
+            </div>
+          )}
+        </div>
+
+        {/* Summary cards */}
+        <div className="summary-row">
+          <div className="summary-card">
+            <div className="label">Itens cadastrados</div>
+            <div className="value">{stats.total}</div>
+            <div className="sub">em {Object.keys(catCounts).filter(k => k !== 'Todos' && catCounts[k] > 0).length} categorias</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Estoque baixo</div>
+            <div className="value" style={{color:'var(--warn)'}}>{stats.baixo}</div>
+            <div className="sub">abaixo do mínimo</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Sem estoque</div>
+            <div className="value" style={{color:'var(--alert)'}}>{stats.zero}</div>
+            <div className="sub">quantidade zerada</div>
+          </div>
+          <div className="summary-card">
+            <div className="label">Valor total estimado</div>
+            <div className="value">{fmtBRL(stats.valor)}</div>
+            <div className="sub">baseado no custo unitário</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="tabs">
+          <button className={"tab" + (tab==='itens' ? ' active' : '')} onClick={() => setTab('itens')}>Itens</button>
+          <button className={"tab" + (tab==='movimentacoes' ? ' active' : '')} onClick={() => setTab('movimentacoes')}>Movimentações</button>
+        </div>
+
+        {loading && <p className="loading">Carregando…</p>}
+
+        {/* Tab: Itens */}
+        {!loading && tab === 'itens' && (
+          <div>
+            <div className="tools">
+              <div className="search">
+                <Icon name="search" />
+                <input placeholder="Buscar por nome ou código" value={busca} onChange={e=>setBusca(e.target.value)} />
+              </div>
+              <div className="chips">
+                {['Todos', ...CATEGORIAS].map(c => (
+                  <button key={c} className="chip" aria-pressed={catFiltro===c} onClick={() => setCatFiltro(c)}>
+                    {c} <b>{catCounts[c] || 0}</b>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredItens.length === 0 && <p className="empty">Nenhum item encontrado.</p>}
+            {filteredItens.length > 0 && (
+              <div className="tbl-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Categoria</th>
+                      <th>Qtd. atual</th>
+                      <th>Qtd. mínima</th>
+                      <th>Unidade</th>
+                      <th>Custo unit.</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredItens.map(item => {
+                      const st = getStatus(item.qtdAtual, item.qtdMinima);
+                      return (
+                        <tr key={item.id} onClick={() => setEditItem(item)}>
+                          <td><strong>{item.nome}</strong>{item.codigo && <><br/><small style={{color:'var(--muted)'}}>{item.codigo}</small></>}</td>
+                          <td><span className="cat">{item.categoria}</span></td>
+                          <td>{item.qtdAtual}</td>
+                          <td>{item.qtdMinima}</td>
+                          <td>{item.unidade}</td>
+                          <td>{fmtBRL(item.custoUnitario)}</td>
+                          <td><span className={"status " + st.cls}>● {st.label}</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Movimentações */}
+        {!loading && tab === 'movimentacoes' && (
+          <div>
+            {sortedMovs.length === 0 && <p className="empty">Nenhuma movimentação registrada.</p>}
+            {sortedMovs.length > 0 && (
+              <div className="mov-list">
+                {sortedMovs.map(m => (
+                  <div key={m.id} className="mov-item" onClick={() => setEditMov(m)}>
+                    <div className={"mov-icon " + m.tipo}>{m.tipo === 'entrada' ? '↓' : '↑'}</div>
+                    <div className="mov-info">
+                      <h4>{m.itemNome || '—'}</h4>
+                      <p>{m.descricao || '—'} • {fmtDate(m.data)}</p>
+                    </div>
+                    <div className={"mov-qty " + m.tipo}>
+                      {m.tipo === 'entrada' ? '+' : '−'}{m.quantidade} {m.itemUnidade || ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dialogs */}
+        {editItem !== null && (
+          <ItemDialog
+            initial={editItem}
+            onClose={() => setEditItem(null)}
+            onSaved={() => setEditItem(null)}
+          />
+        )}
+        {(editMov !== null || newMovTipo !== null) && (
+          <MovDialog
+            tipo={newMovTipo || (editMov && editMov.tipo) || 'entrada'}
+            itens={sortedItens}
+            initial={editMov}
+            onClose={() => { setEditMov(null); setNewMovTipo(null); }}
+            onSaved={() => { setEditMov(null); setNewMovTipo(null); }}
+          />
+        )}
+      </main>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
