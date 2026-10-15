@@ -8,156 +8,640 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 :root{
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-  --bg:#F3F4F7; --surface:#FFFFFF; --col:#E9ECF2; --hover:#F3F5F9;
+  --navy:#151F38; --red:#CE1B21; --red-d:#A8151A; --blue:#66B2E5; --accent:#2E86C7;
+  --c-blue:#2E86C7; --c-sky:#2E9BD6; --c-green:#1E9E6A; --c-red:#CE1B21; --c-amber:#B4791A; --c-violet:#6D54C8;
+  --side-bg:#151F38; --side-ink:#EEF2FB; --side-muted:#93A0C0;
+  --side-active:rgba(206,27,33,.16); --side-hover:rgba(255,255,255,.06); --side-line:rgba(255,255,255,.09);
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#EEF0F5; --hover:#F3F5F9;
   --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
-  --line:#DFE3EA; --line-strong:#C8CFDB;
-  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7;
-  --brand-red:#CE1B21; --brand-blue:#66B2E5;
-  --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --ok:#067647;
+  --line:#E2E6EE; --line-strong:#CFD6E2;
+  --ok:#067647; --ok-bg:#E8F6EF; --alert:#B42318; --alert-bg:#FEF0EE; --warn:#A54A08; --warn-bg:#FDF3E7;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#0D1322; --surface:#151C2E; --col:#111828; --hover:#1C2540;
-    --ink:#E8ECF5; --ink-2:#AAB3C8; --muted:#8B96AE;
-    --line:#252E46; --line-strong:#34405C;
-    --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5;
-    --brand-red:#FF6B61; --brand-blue:#66B2E5;
-    --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --ok:#5BD29A;
-  }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --side-bg:#111A30;
+  --bg:#0C1220; --surface:#151C2E; --col:#1A2238; --hover:#1C2540;
+  --ink:#E8ECF5; --ink-2:#AEB8CE; --muted:#8B96AE;
+  --line:#242D44; --line-strong:#34405C;
+  --ok:#5BD29A; --ok-bg:#122A22; --alert:#FF8F80; --alert-bg:#331A18; --warn:#F2B25A; --warn-bg:#2E2212;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --side-bg:#111A30;
+  --bg:#0C1220; --surface:#151C2E; --col:#1A2238; --hover:#1C2540;
+  --ink:#E8ECF5; --ink-2:#AEB8CE; --muted:#8B96AE;
+  --line:#242D44; --line-strong:#34405C;
+  --ok:#5BD29A; --ok-bg:#122A22; --alert:#FF8F80; --alert-bg:#331A18; --warn:#F2B25A; --warn-bg:#2E2212;
+  color-scheme:dark;
 }
+
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:inherit}
+.tnum{font-variant-numeric:tabular-nums}
+.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
 
-.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
-.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0}
-.logo-img{height:38px;width:auto;display:block}
-.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2;color:var(--ink);text-align:left}
-.brand-sub{color:var(--muted);font-size:12.5px;text-align:left}
+.app{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
 
-.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
-.page-h{margin:0 0 20px}
-.page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
-.page-h p{margin:0;color:var(--muted);font-size:13px}
+/* sidebar */
+.side{background:var(--side-bg);color:var(--side-ink);display:flex;flex-direction:column;gap:4px;
+  padding:16px 12px calc(16px + env(safe-area-inset-bottom,0px));
+  border-right:1px solid var(--side-line);position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto}
+.side-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.side-brand img{height:34px;width:auto;display:block;background:#fff;border-radius:8px;padding:3px}
+.side-brand .nm{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.15}
+.side-brand .sb{font-size:11.5px;color:var(--side-muted);letter-spacing:.03em;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav .lab{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--side-muted);padding:12px 10px 4px}
+.navi{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;color:var(--side-ink);
+  text-decoration:none;font-size:13.5px;font-weight:500;position:relative;opacity:.86;cursor:pointer;border:0;background:none;text-align:left;width:100%}
+.navi:hover{background:var(--side-hover);opacity:1}
+.navi.active{background:var(--side-active);opacity:1;font-weight:600}
+.navi.active::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--red)}
+.navi.soon{opacity:.5;cursor:default}
+.navi.soon:hover{background:none}
+.navi .ic{width:17px;height:17px;opacity:.95}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
-.mcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s,transform .1s;text-align:left;font:inherit;color:inherit}
-.mcard:hover{border-color:var(--line-strong)}
-.mcard:active{transform:scale(.99)}
-.mcard.disabled{cursor:default;opacity:.55}
-.mcard.disabled:hover{border-color:var(--line)}
-.mcard .micon{width:42px;height:42px;border-radius:9px;display:grid;place-items:center;margin-bottom:14px}
-.mcard .micon .ic{width:21px;height:21px}
-.mcard h3{margin:0 0 3px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
-.mcard p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
-.badge-soon{position:absolute;top:16px;right:16px;font-size:10.5px;font-weight:600;color:var(--muted);background:var(--col);padding:3px 8px;border-radius:20px}
-.ext-ic{width:13px;height:13px;color:var(--muted)}
+/* content */
+.content{display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--surface);
+  border-bottom:1px solid var(--line);border-top:3px solid var(--red);position:sticky;top:0;z-index:5;
+  padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.search{flex:1;min-width:0;max-width:440px;display:flex;align-items:center;gap:9px;background:var(--col);
+  border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--muted)}
+.search input{border:0;background:transparent;color:var(--ink);font-size:13.5px;width:100%;outline:none}
+.search input::placeholder{color:var(--muted)}
+.tb-sp{flex:1}
+.ib{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--ink-2);
+  background:transparent;border:1px solid transparent;cursor:pointer;position:relative}
+.ib:hover{background:var(--hover);border-color:var(--line)}
+.ib .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+.user{display:flex;align-items:center;gap:10px;padding-left:4px}
+.ava{width:38px;height:38px;border-radius:10px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+.user .un{font-weight:600;font-size:13.5px;line-height:1.15}
+.user .ur{font-size:11.5px;color:var(--muted)}
+.theme-moon,.theme-sun{display:none}
+:root:not([data-theme]) .theme-moon{display:block}
+@media (prefers-color-scheme:dark){ :root:not([data-theme]) .theme-moon{display:none} :root:not([data-theme]) .theme-sun{display:block} }
+:root[data-theme="light"] .theme-moon{display:block}
+:root[data-theme="dark"] .theme-sun{display:block}
 
+.wrap{padding:22px;padding-left:max(22px,env(safe-area-inset-left,0px));padding-right:max(22px,env(safe-area-inset-right,0px));
+  display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start}
+.main{display:flex;flex-direction:column;gap:18px;min-width:0}
+.rail{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px}
+.stat .row1{display:flex;align-items:center;justify-content:space-between}
+.stat .chip{width:40px;height:40px;border-radius:11px;display:grid;place-items:center}
+.stat .chip .ic{width:20px;height:20px}
+.stat .trend{font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:20px}
+.trend.up{color:var(--ok);background:var(--ok-bg)} .trend.down{color:var(--alert);background:var(--alert-bg)}
+.trend.warnp{color:var(--warn);background:var(--warn-bg)}
+.stat .val{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.stat .cap{font-size:12.5px;color:var(--muted)}
+.cb{background:color-mix(in srgb,var(--c-blue) 15%,transparent);color:var(--c-blue)}
+.cs{background:color-mix(in srgb,var(--c-sky) 15%,transparent);color:var(--c-sky)}
+.cg{background:color-mix(in srgb,var(--c-green) 15%,transparent);color:var(--c-green)}
+.cr{background:color-mix(in srgb,var(--c-red) 15%,transparent);color:var(--c-red)}
+.ca{background:color-mix(in srgb,var(--c-amber) 15%,transparent);color:var(--c-amber)}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
+.card-h h2{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.card-h h2::before{content:"";width:3px;height:15px;border-radius:3px;background:var(--red)}
+.card-h .mut{font-size:12px;color:var(--muted)}
+.lnk{font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none;cursor:pointer;background:none;border:0}
+.card-b{padding:6px 18px 10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.empty{padding:22px 4px;color:var(--muted);font-size:12.5px;text-align:center;line-height:1.5}
+.loading{padding:22px 4px;color:var(--muted);font-size:12.5px;text-align:center}
+
+/* listas */
+.lst{display:flex;flex-direction:column}
+.lrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.lrow:first-child{border-top:0}
+.lrow .lmain{min-width:0;flex:1}
+.lrow .l1{font-size:13.5px;font-weight:600;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .l2{font-size:11.5px;color:var(--muted);line-height:1.3;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .lright{text-align:right;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.lrow .ldate{font-size:12px;font-weight:600;color:var(--ink-2)}
+.pill{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.p-ok{color:var(--ok);background:var(--ok-bg)}
+.p-warn{color:var(--warn);background:var(--warn-bg)}
+.p-red{color:var(--alert);background:var(--alert-bg)}
+.p-blue{color:var(--c-blue);background:color-mix(in srgb,var(--c-blue) 14%,transparent)}
+.p-violet{color:var(--c-violet);background:color-mix(in srgb,var(--c-violet) 14%,transparent)}
+.p-mut{color:var(--muted);background:var(--col)}
+
+/* charts + financeiro */
+.charts{display:grid;grid-template-columns:1.25fr 1fr;gap:18px}
+.bars{width:100%;height:auto;display:block}
+.fin{display:flex;flex-direction:column;gap:16px;padding:6px 0}
+.finrow .fl{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.finrow .fn{font-size:12.5px;color:var(--ink-2);font-weight:500}
+.finrow .fv{font-size:14px;font-weight:700}
+.track{height:9px;border-radius:6px;background:var(--col);overflow:hidden}
+.track i{display:block;height:100%;border-radius:6px}
+.finsaldo{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:14px;margin-top:2px}
+.finsaldo .fn{font-size:13px;font-weight:600}
+.finsaldo .fv{font-size:17px;font-weight:700}
+
+/* rail */
+.ag-date{display:flex;align-items:center;justify-content:space-between;padding:8px 0 12px;font-size:12.5px;color:var(--muted)}
+.ag-date b{color:var(--ink);font-weight:600}
+.ag{display:flex;flex-direction:column}
+.ag .it{display:flex;gap:11px;padding:10px 0;border-top:1px solid var(--line)}
+.ag .it:first-child{border-top:0;padding-top:2px}
+.ag .tm{font-size:11.5px;font-weight:700;color:var(--ink-2);width:46px;flex:none;padding-top:1px}
+.ag .bar{width:3px;border-radius:3px;flex:none}
+.ag .tx{min-width:0}
+.ag .tx .t1{font-size:13px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag .tx .t2{font-size:11.5px;color:var(--muted)}
+.alr{display:flex;flex-direction:column;padding:2px 0}
+.al{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line)}
+.al:first-child{border-top:0}
+.al .ad{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center}
+.al .ad .ic{width:17px;height:17px}
+.al .atx{font-size:13px;font-weight:600;line-height:1.25}
+.al .atx small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.al .acount{margin-left:auto;font-size:15px;font-weight:700;flex:none}
+.mov{display:flex;flex-direction:column;padding:2px 0}
+.mv{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+.mv:first-child{border-top:0;padding-top:2px}
+.mv .mi{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center}
+.mv .mi .ic{width:17px;height:17px}
+.mv .mt{min-width:0}
+.mv .mt .m1{font-size:12.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mv .mt .m2{font-size:11.5px;color:var(--muted)}
+.mv .mw{margin-left:auto;font-size:11px;color:var(--muted);flex:none;white-space:nowrap}
+
+@media (max-width:1140px){ .wrap{grid-template-columns:1fr} .charts{grid-template-columns:1fr} }
+@media (max-width:980px){ .stats{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr} }
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .side{position:sticky;top:0;height:auto;flex-direction:row;align-items:center;gap:8px;overflow-x:auto;
+    padding:10px 12px;border-right:0;border-bottom:1px solid var(--side-line)}
+  .side-brand{padding:0 8px 0 2px;border-right:1px solid var(--side-line);margin-right:4px}
+  .side-brand .sb{display:none}
+  .nav{flex-direction:row;gap:4px}
+  .nav .lab{display:none}
+  .navi{white-space:nowrap;padding:8px 11px;width:auto}
+  .navi.active::before{display:none}
+  .navi.active{box-shadow:inset 0 -2px 0 var(--red)}
+}
+@media (max-width:520px){
+  .stats{grid-template-columns:1fr 1fr}
+  .topbar{flex-wrap:wrap}
+  .search{order:3;max-width:none;flex-basis:100%}
+  .user .un,.user .ur{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-  <symbol id="i-package" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
-  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
   <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></symbol>
   <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
   <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></symbol>
-  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
 </svg>
 
 <div id="root"></div>
 
 <script type="text/babel">
-const PEDIDOS_URL = "https://nicolasmonte0.github.io/pedidos-novari-print/";
+const {useState, useEffect, useMemo} = React;
 
-function Icon({name, className}) {
-  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  if (window.firebase && !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  if (window.firebase) db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PEDIDOS_URL = "https://nicolasmonte0.github.io/pedidos-novari-print/";
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function Icon({name, className, style}) {
+  return <svg className={className || "ic"} style={style} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
 }
 
-function Header({onHome}) {
+/* ── Helpers (iguais aos dos módulos) ── */
+function toDateAny(v){
+  if(!v) return null;
+  if(v.toDate){ try{ return v.toDate(); }catch(e){ return null; } }
+  if(v instanceof Date) return v;
+  if(typeof v === 'string'){
+    const p = v.split('/');
+    if(p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
+    const d = new Date(v); return isNaN(d) ? null : d;
+  }
+  return null;
+}
+function diasAte(v){ const d = toDateAny(v); if(!d || isNaN(d)) return 999; return Math.ceil((d - new Date())/86400000); }
+function fmtBRL(v){ return 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDDMM(v){ const d = toDateAny(v); if(!d || isNaN(d)) return '—'; return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+function isMesAtual(v){ const d = toDateAny(v); if(!d || isNaN(d)) return false; const n = new Date(); return d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
+
+function useCol(name){
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if(!db){ setLoading(false); return; }
+    let unsub;
+    try {
+      unsub = db.collection(name).onSnapshot(
+        snap => { setItems(snap.docs.map(d => ({id:d.id, ...d.data()}))); setLoading(false); },
+        err => { console.error(name, err); setLoading(false); }
+      );
+    } catch(e){ console.error(name, e); setLoading(false); }
+    return () => { try{ unsub && unsub(); }catch(e){} };
+  }, [name]);
+  return {items, loading};
+}
+
+/* ── Shell ── */
+const NAV = [
+  {key:'index',          nome:'Painel',         icon:'grid',     active:true},
+  {key:'contatos',       nome:'Contatos',       icon:'users'},
+  {key:'pedidos',        nome:'Pedidos',        icon:'package',  ext:true},
+  {key:'financeiro',     nome:'Financeiro',     icon:'wallet'},
+  {key:'administrativo', nome:'Administrativo', icon:'building'},
+  {key:'estoque',        nome:'Estoque',        icon:'box'},
+  {key:'licitacao',      nome:'Licitação',      icon:'gavel'},
+];
+function go(n){
+  if(n.soon) return;
+  if(n.ext){ window.open(PEDIDOS_URL, '_blank', 'noopener'); return; }
+  if(n.key === 'index') return;
+  window.location.href = n.key + '.html';
+}
+
+function Sidebar(){
   return (
-    <header className="top">
-      <button className="brand" onClick={onHome}>
-        <img src="novari-icon.png" alt="Novari Print" className="logo-img" />
-        <div>
-          <div className="brand-name">Novari Print</div>
-          <div className="brand-sub">Gestão</div>
-        </div>
+    <aside className="side">
+      <div className="side-brand">
+        <img src="novari-icon.png" alt="Novari Print" />
+        <div><div className="nm">Novari Print</div><div className="sb">Gestão</div></div>
+      </div>
+      <nav className="nav">
+        {NAV.map(n => (
+          <button key={n.key} className={"navi" + (n.active ? " active" : "")} onClick={() => go(n)}>
+            <Icon name={n.icon} />{n.nome}
+          </button>
+        ))}
+        <div className="lab">Sistema</div>
+        <button className="navi soon"><Icon name="chart" />Relatórios</button>
+        <button className="navi soon"><Icon name="settings" />Configurações</button>
+      </nav>
+    </aside>
+  );
+}
+
+function Topbar(){
+  function toggleTheme(){
+    const root = document.documentElement;
+    let cur = root.getAttribute('data-theme');
+    if(!cur) cur = (window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches) ? 'dark' : 'light';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('novari-theme', next); }catch(e){}
+  }
+  return (
+    <header className="topbar">
+      <div className="search">
+        <Icon name="search" style={{width:16,height:16}} />
+        <input placeholder="Buscar pedidos, contatos, editais…" aria-label="Buscar" />
+      </div>
+      <div className="tb-sp"></div>
+      <button className="ib" onClick={toggleTheme} aria-label="Alternar tema claro/escuro">
+        <Icon name="moon" className="ic theme-moon" /><Icon name="sun" className="ic theme-sun" />
       </button>
+      <button className="ib" aria-label="Notificações"><Icon name="bell" /><span className="dot"></span></button>
+      <button className="ib" aria-label="Ajuda"><Icon name="help" /></button>
+      <div className="user">
+        <div className="ava">NM</div>
+        <div><div className="un">Nicolas Monte</div><div className="ur">Administrador</div></div>
+      </div>
     </header>
   );
 }
 
-const MODULES = [
-  {key:'contatos', nome:'Contatos', desc:'Clientes, fornecedores e órgãos públicos', icon:'users', bg:'#EAF5FC', fg:'#1D6FA5', status:'interno'},
-  {key:'pedidos', nome:'Pedidos', desc:'Produção e entrega de pedidos', icon:'package', bg:'#FFFBEB', fg:'#92400E', status:'externo'},
-  {key:'financeiro', nome:'Financeiro', desc:'Contas a pagar, a receber e fluxo de caixa', icon:'wallet', bg:'#F0FDF4', fg:'#166534', status:'interno'},
-  {key:'administrativo', nome:'Administrativo', desc:'Dados da empresa, certidões e documentos', icon:'building', bg:'#F5F3FF', fg:'#5B21B6', status:'interno'},
-  {key:'estoque', nome:'Estoque', desc:'Controle manual de itens', icon:'box', bg:'#FEF2F2', fg:'#991B1B', status:'interno'},
-  {key:'licitacao', nome:'Licitação', desc:'Editais, concorrentes e inteligência de mercado', icon:'gavel', bg:'#ECFEFF', fg:'#0E7490', status:'interno'},
-];
-
-function Home({onOpen}) {
+/* ── Stats ── */
+function Stats({contatos, editais, receber, certidoes}){
+  const nContatos = contatos.length;
+  const nEditais = editais.filter(e => e.status === 'Em análise' || e.status === 'Participando').length;
+  const receberMes = receber.filter(c => c.status !== 'recebido' && isMesAtual(c.vencimento)).reduce((s,c)=>s+Number(c.valor||0),0);
+  const certVencer = certidoes.filter(c => diasAte(c.validade) <= 30).length;
   return (
-    <main className="wrap">
-      <div className="page-h">
-        <h1>Painel</h1>
-        <p>Escolha um módulo para continuar.</p>
+    <section className="stats">
+      <div className="stat">
+        <div className="row1"><div className="chip cs"><Icon name="users" /></div></div>
+        <div className="val tnum">{nContatos}</div><div className="cap">Contatos cadastrados</div>
       </div>
-      <div className="grid">
-        {MODULES.map(m => {
-          const disabled = m.status === 'em-breve';
-          const external = m.status === 'externo';
-          return (
-            <button
-              key={m.key}
-              className={"mcard" + (disabled ? " disabled" : "")}
-              onClick={() => { if (!disabled) onOpen(m); }}
-              disabled={disabled}
-            >
-              {disabled && <span className="badge-soon">em breve</span>}
-              <div className="micon" style={{background:m.bg, color:m.fg}}><Icon name={m.icon} /></div>
-              <h3>{m.nome}{external && <Icon name="external" className="ext-ic" />}</h3>
-              <p>{m.desc}</p>
-            </button>
-          );
-        })}
+      <div className="stat">
+        <div className="row1"><div className="chip cg"><Icon name="wallet" /></div></div>
+        <div className="val tnum">{fmtBRL(receberMes)}</div><div className="cap">A receber este mês</div>
       </div>
-    </main>
+      <div className="stat">
+        <div className="row1"><div className="chip cr"><Icon name="gavel" /></div></div>
+        <div className="val tnum">{nEditais}</div><div className="cap">Editais em aberto</div>
+      </div>
+      <div className="stat">
+        <div className="row1"><div className="chip ca"><Icon name="shield" /></div>{certVencer>0 && <span className="trend warnp">⚠ 30 dias</span>}</div>
+        <div className="val tnum">{certVencer}</div><div className="cap">Certidões a vencer</div>
+      </div>
+    </section>
   );
 }
 
-function App() {
-  function openModule(m) {
-    if (m.status === 'externo') {
-      window.open(PEDIDOS_URL, '_blank', 'noopener');
-      return;
-    }
-    if (m.status === 'interno') {
-      window.open(m.key + '.html', '_blank', 'noopener');
-      return;
-    }
-  }
-
+/* ── Certidões ── */
+function certPill(c){
+  const d = diasAte(c.validade);
+  if(!c.validade) return <span className="pill p-mut">Sem validade</span>;
+  if(d < 0) return <span className="pill p-red">Vencida</span>;
+  if(d <= 60) return <span className="pill p-warn">Vence em {d} dias</span>;
+  return <span className="pill p-ok">Em dia</span>;
+}
+function CertidoesCard({items, loading}){
+  const sorted = useMemo(() => [...items].sort((a,b)=>diasAte(a.validade)-diasAte(b.validade)).slice(0,6), [items]);
   return (
-    <React.Fragment>
-      <Header onHome={() => {}} />
-      <Home onOpen={openModule} />
-    </React.Fragment>
+    <div className="card">
+      <div className="card-h"><h2>Certidões a vencer</h2><button className="lnk" onClick={()=>go({key:'administrativo'})}>Administrativo</button></div>
+      <div className="card-b">
+        {loading ? <div className="loading">Carregando…</div> :
+         sorted.length === 0 ? <div className="empty">Nenhuma certidão cadastrada.<br/>Adicione documentos no módulo Administrativo para acompanhar os vencimentos aqui.</div> :
+         <div className="lst">{sorted.map(c => (
+           <div className="lrow" key={c.id}>
+             <div className="lmain"><div className="l1">{c.nome || 'Certidão'}</div><div className="l2">Validade {c.validade || '—'}</div></div>
+             <div className="lright">{certPill(c)}</div>
+           </div>
+         ))}</div>}
+      </div>
+    </div>
   );
 }
 
+/* ── Editais ── */
+const ED_PILL = {
+  'Em análise':{cls:'p-blue',txt:'Em análise'}, 'Participando':{cls:'p-violet',txt:'Participando'},
+  'Ganho':{cls:'p-ok',txt:'Ganho'}, 'Perdido':{cls:'p-red',txt:'Perdido'}, 'Cancelado':{cls:'p-mut',txt:'Cancelado'}
+};
+function EditaisCard({items, loading}){
+  const sorted = useMemo(() => {
+    const abertos = items.filter(e => e.status === 'Em análise' || e.status === 'Participando');
+    const base = abertos.length ? abertos : items;
+    return [...base].sort((a,b)=>{
+      const da = toDateAny(a.dataAbertura)||new Date(8640000000000000);
+      const dbb = toDateAny(b.dataAbertura)||new Date(8640000000000000);
+      return da - dbb;
+    }).slice(0,6);
+  }, [items]);
+  return (
+    <div className="card">
+      <div className="card-h"><h2>Editais com prazo</h2><button className="lnk" onClick={()=>go({key:'licitacao'})}>Licitação</button></div>
+      <div className="card-b">
+        {loading ? <div className="loading">Carregando…</div> :
+         sorted.length === 0 ? <div className="empty">Nenhum edital cadastrado.<br/>Cadastre editais no módulo Licitação para vê-los aqui.</div> :
+         <div className="lst">{sorted.map(e => {
+           const p = ED_PILL[e.status] || {cls:'p-blue', txt:e.status||'—'};
+           return (
+             <div className="lrow" key={e.id}>
+               <div className="lmain"><div className="l1">{(e.numero||'—')}{e.orgao?` — ${e.orgao}`:''}</div><div className="l2">{e.objeto || e.modalidade || '—'}</div></div>
+               <div className="lright"><span className="ldate tnum">{fmtDDMM(e.dataAbertura)}</span><span className={"pill "+p.cls}>{p.txt}</span></div>
+             </div>
+           );
+         })}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── Faturamento ── */
+function FaturamentoChart({receber}){
+  const data = useMemo(() => {
+    const now = new Date();
+    const months = [];
+    for(let i=9;i>=0;i--){ const d = new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({y:d.getFullYear(), m:d.getMonth(), label:MESES[d.getMonth()], val:0}); }
+    receber.filter(c => c.status === 'recebido').forEach(c => {
+      const dt = toDateAny(c.dataRecebimento) || toDateAny(c.vencimento);
+      if(!dt || isNaN(dt)) return;
+      const mo = months.find(x => x.y===dt.getFullYear() && x.m===dt.getMonth());
+      if(mo) mo.val += Number(c.valor||0);
+    });
+    return months;
+  }, [receber]);
+  const max = Math.max(1, ...data.map(d=>d.val));
+  const temDados = data.some(d => d.val > 0);
+  const topLabel = (max/1000).toLocaleString('pt-BR',{maximumFractionDigits: max>=10000?0:1});
+  const midLabel = (max/2000).toLocaleString('pt-BR',{maximumFractionDigits: max>=10000?0:1});
+  const slot = 43, bw = 26, x0 = 40, plotH = 150, baseY = 170;
+  return (
+    <div className="card">
+      <div className="card-h"><h2>Faturamento por Mês</h2><span className="mut tnum">{new Date().getFullYear()}</span></div>
+      <div className="card-b" style={{paddingBottom:16}}>
+        <svg className="bars" viewBox="0 0 480 210" role="img" aria-label="Faturamento mensal (últimos meses)">
+          <line x1="36" y1="20" x2="470" y2="20" stroke="var(--line)" strokeWidth="1"/>
+          <line x1="36" y1="95" x2="470" y2="95" stroke="var(--line)" strokeWidth="1"/>
+          <line x1="36" y1="170" x2="470" y2="170" stroke="var(--line-strong)" strokeWidth="1"/>
+          <text x="30" y="24" textAnchor="end" fontSize="10" fill="var(--muted)">{topLabel}</text>
+          <text x="30" y="99" textAnchor="end" fontSize="10" fill="var(--muted)">{midLabel}</text>
+          <text x="30" y="174" textAnchor="end" fontSize="10" fill="var(--muted)">0</text>
+          <text x="28" y="192" textAnchor="end" fontSize="9" fill="var(--muted)">R$ mil</text>
+          {data.map((d,i) => {
+            const h = Math.max(d.val>0?3:0, d.val/max*plotH);
+            const x = x0 + i*slot + (slot-bw)/2;
+            const last = i === data.length-1;
+            return <rect key={i} x={x} y={baseY-h} width={bw} height={h} rx="4" fill={last ? "var(--red)" : "var(--blue)"} />;
+          })}
+          {data.map((d,i) => {
+            const x = x0 + i*slot + slot/2;
+            const last = i === data.length-1;
+            return <text key={i} x={x} y="184" textAnchor="middle" fontSize="10" fontWeight={last?"700":"400"} fill={last?"var(--red)":"var(--muted)"}>{d.label}</text>;
+          })}
+          {!temDados && <text x="256" y="100" textAnchor="middle" fontSize="12" fill="var(--muted)">Sem recebimentos lançados ainda</text>}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ── Financeiro do mês ── */
+function FinanceiroCard({pagar, receber, loading}){
+  const receberMes = receber.filter(c => c.status !== 'recebido' && isMesAtual(c.vencimento)).reduce((s,c)=>s+Number(c.valor||0),0);
+  const pagarMes = pagar.filter(c => c.status !== 'pago' && isMesAtual(c.vencimento)).reduce((s,c)=>s+Number(c.valor||0),0);
+  const saldo = receberMes - pagarMes;
+  const max = Math.max(1, receberMes, pagarMes);
+  const vazio = receberMes === 0 && pagarMes === 0;
+  return (
+    <div className="card">
+      <div className="card-h"><h2>Financeiro do mês</h2><span className="mut">{MESES[new Date().getMonth()]}</span></div>
+      <div className="card-b">
+        {loading ? <div className="loading">Carregando…</div> :
+         vazio ? <div className="empty">Sem contas a pagar ou receber lançadas para este mês.</div> :
+         <div className="fin">
+           <div className="finrow">
+             <div className="fl"><span className="fn">A receber</span><span className="fv tnum" style={{color:'var(--ok)'}}>{fmtBRL(receberMes)}</span></div>
+             <div className="track"><i style={{width:(receberMes/max*100)+'%', background:'var(--c-green)'}}></i></div>
+           </div>
+           <div className="finrow">
+             <div className="fl"><span className="fn">A pagar</span><span className="fv tnum" style={{color:'var(--alert)'}}>{fmtBRL(pagarMes)}</span></div>
+             <div className="track"><i style={{width:(pagarMes/max*100)+'%', background:'var(--red)'}}></i></div>
+           </div>
+           <div className="finsaldo"><span className="fn">Saldo previsto</span><span className="fv tnum" style={{color: saldo>=0?'var(--ok)':'var(--alert)'}}>{fmtBRL(saldo)}</span></div>
+         </div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── Agenda (próximos prazos reais) ── */
+function AgendaCard({editais, certidoes, pagar, receber}){
+  const eventos = useMemo(() => {
+    const ev = [];
+    editais.forEach(e => { const d = toDateAny(e.dataAbertura); if(d && diasAte(e.dataAbertura) >= -1) ev.push({d, cor:'var(--c-blue)', t1:`${e.numero||'Edital'}${e.orgao?' — '+e.orgao:''}`, t2:'Abertura de edital'}); });
+    certidoes.forEach(c => { const dd = diasAte(c.validade); if(c.validade && dd <= 60) ev.push({d:toDateAny(c.validade), cor:dd<0?'var(--red)':'var(--c-amber)', t1:c.nome||'Certidão', t2:dd<0?'Certidão vencida':'Certidão vence'}); });
+    receber.forEach(c => { const dd = diasAte(c.vencimento); if(c.status!=='recebido' && dd>=0 && dd<=15) ev.push({d:toDateAny(c.vencimento), cor:'var(--c-green)', t1:c.descricao||'A receber', t2:'Conta a receber'}); });
+    pagar.forEach(c => { const dd = diasAte(c.vencimento); if(c.status!=='pago' && dd>=0 && dd<=15) ev.push({d:toDateAny(c.vencimento), cor:'var(--c-violet)', t1:c.descricao||'A pagar', t2:'Conta a pagar'}); });
+    return ev.filter(x=>x.d && !isNaN(x.d)).sort((a,b)=>a.d-b.d).slice(0,5);
+  }, [editais, certidoes, pagar, receber]);
+  const hoje = new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
+  return (
+    <section className="card">
+      <div className="card-h"><h2>Próximos prazos</h2></div>
+      <div className="card-b">
+        <div className="ag-date"><span>Hoje</span><b>{hoje}</b></div>
+        {eventos.length === 0 ? <div className="empty">Nenhum prazo próximo.</div> :
+         <div className="ag">{eventos.map((e,i) => (
+           <div className="it" key={i}><span className="tm tnum">{fmtDDMM(e.d)}</span><span className="bar" style={{background:e.cor}}></span><div className="tx"><div className="t1">{e.t1}</div><div className="t2">{e.t2}</div></div></div>
+         ))}</div>}
+      </div>
+    </section>
+  );
+}
+
+/* ── Alertas ── */
+function AlertasCard({certidoes, pagar, receber, estoque}){
+  const certVenc = certidoes.filter(c => c.validade && diasAte(c.validade) < 0).length;
+  const certProx = certidoes.filter(c => c.validade && diasAte(c.validade) >= 0 && diasAte(c.validade) <= 30).length;
+  const contasVenc = [...pagar, ...receber].filter(c => c.status!=='pago' && c.status!=='recebido' && diasAte(c.vencimento) < 0).length;
+  const estBaixo = estoque.filter(i => { const q = Number(i.quantidade||i.atual||0); const m = Number(i.estoqueMinimo||i.minimo||0); return m > 0 && q <= m; }).length;
+  const linhas = [];
+  if(certVenc) linhas.push({cls:'cr', cor:'var(--alert)', ic:'shield', t:'Certidões vencidas', s:'Regularize no Administrativo', n:certVenc});
+  if(certProx) linhas.push({cls:'ca', cor:'var(--warn)', ic:'shield', t:'Certidões a vencer (30d)', s:'Fique de olho nos prazos', n:certProx});
+  if(contasVenc) linhas.push({cls:'cr', cor:'var(--alert)', ic:'wallet', t:'Contas vencidas', s:'Pendências no Financeiro', n:contasVenc});
+  if(estBaixo) linhas.push({cls:'ca', cor:'var(--warn)', ic:'box', t:'Itens com estoque baixo', s:'Reposição necessária', n:estBaixo});
+  return (
+    <section className="card">
+      <div className="card-h"><h2>Alertas</h2></div>
+      <div className="card-b">
+        {linhas.length === 0 ? <div className="empty">Tudo em dia — nenhum alerta no momento. ✓</div> :
+         <div className="alr">{linhas.map((l,i) => (
+           <div className="al" key={i}><div className={"ad "+l.cls}><Icon name={l.ic} /></div><div className="atx">{l.t}<small>{l.s}</small></div><span className="acount" style={{color:l.cor}}>{l.n}</span></div>
+         ))}</div>}
+      </div>
+    </section>
+  );
+}
+
+/* ── Movimentações ── */
+function MovimentacoesCard({movs, loading}){
+  const recent = useMemo(() => [...movs].sort((a,b)=>{ const da=toDateAny(a.data||a.criadoEm)||new Date(0); const dbb=toDateAny(b.data||b.criadoEm)||new Date(0); return dbb-da; }).slice(0,5), [movs]);
+  return (
+    <section className="card">
+      <div className="card-h"><h2>Últimas Movimentações</h2></div>
+      <div className="card-b">
+        {loading ? <div className="loading">Carregando…</div> :
+         recent.length === 0 ? <div className="empty">Nenhuma movimentação de estoque registrada.</div> :
+         <div className="mov">{recent.map((m,i) => {
+           const saida = (m.tipo||'').toLowerCase() === 'saida' || (m.tipo||'').toLowerCase() === 'saída';
+           return (
+             <div className="mv" key={m.id||i}>
+               <div className={"mi "+(saida?'cr':'cg')}><Icon name={saida?'truck':'box'} /></div>
+               <div className="mt"><div className="m1">{m.descricao || (saida?'Saída de estoque':'Entrada de estoque')}</div><div className="m2">{saida?'Saída':'Entrada'}{m.quantidade?` · ${m.quantidade}`:''}</div></div>
+               <span className="mw">{fmtDDMM(m.data||m.criadoEm)}</span>
+             </div>
+           );
+         })}</div>}
+      </div>
+    </section>
+  );
+}
+
+/* ── App ── */
+function App(){
+  const contatos = useCol('contatos');
+  const editais = useCol('editais');
+  const certidoes = useCol('certidoes');
+  const pagar = useCol('contas_pagar');
+  const receber = useCol('contas_receber');
+  const estoque = useCol('estoque_itens');
+  const movs = useCol('estoque_movimentacoes');
+
+  return (
+    <div className="app">
+      <Sidebar />
+      <div className="content">
+        <Topbar />
+        <div className="wrap">
+          <div className="main">
+            <Stats contatos={contatos.items} editais={editais.items} receber={receber.items} certidoes={certidoes.items} />
+            <section className="two">
+              <CertidoesCard items={certidoes.items} loading={certidoes.loading} />
+              <EditaisCard items={editais.items} loading={editais.loading} />
+            </section>
+            <section className="charts">
+              <FaturamentoChart receber={receber.items} />
+              <FinanceiroCard pagar={pagar.items} receber={receber.items} loading={pagar.loading||receber.loading} />
+            </section>
+          </div>
+          <aside className="rail">
+            <AgendaCard editais={editais.items} certidoes={certidoes.items} pagar={pagar.items} receber={receber.items} />
+            <AlertasCard certidoes={certidoes.items} pagar={pagar.items} receber={receber.items} estoque={estoque.items} />
+            <MovimentacoesCard movs={movs.items} loading={movs.loading} />
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+(function(){ try{ const t=localStorage.getItem('novari-theme'); if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); }catch(e){} })();
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
 </body>
