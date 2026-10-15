@@ -22,7 +22,7 @@
   --line:#DFE3EA; --line-strong:#C8CFDB;
   --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7;
   --brand-red:#CE1B21; --brand-blue:#66B2E5;
-  --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --warn-bg:#FFF8EB; --ok:#067647; --ok-bg:#ECFDF3;
+  --info-bg:#EAF4FC; --alert:#B42318; --alert-bg:#FEF1EF; --warn:#A54A08; --warn-bg:#FFF8EB; --ok:#067647; --ok-bg:#ECFDF3;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -31,7 +31,7 @@
     --line:#252E46; --line-strong:#34405C;
     --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5;
     --brand-red:#FF6B61; --brand-blue:#66B2E5;
-    --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --warn-bg:#3A2E18; --ok:#5BD29A; --ok-bg:#183A28;
+    --info-bg:#172A40; --alert:#FF8F80; --alert-bg:#3A1B18; --warn:#F2B25A; --warn-bg:#3A2E18; --ok:#5BD29A; --ok-bg:#183A28;
   }
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -162,6 +162,28 @@ select.inp{appearance:auto}
 .pdf-link:hover{text-decoration:underline}
 .pdf-view-btn{flex:none;width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink-2)}
 .pdf-view-btn:hover{background:var(--hover);color:var(--ink)}
+
+/* Soltar PDFs na aba */
+.sd-drop{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:20px;border:2px dashed var(--line-strong);border-radius:12px;background:var(--hover);margin-bottom:16px;transition:border-color .12s,background .12s}
+.sd-drop.hot{border-color:var(--accent);background:var(--info-bg)}
+.sd-ico{width:44px;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--accent);flex:none}
+.sd-ico .ic{width:22px;height:22px}
+.sd-t{flex:1;min-width:200px}
+.sd-t strong{display:block;font-size:14.5px}
+.sd-t span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.sd-rev{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;display:grid;gap:10px}
+.sd-rev-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sd-pdfi{width:34px;height:34px;border-radius:8px;background:var(--alert-bg);color:var(--alert);display:grid;place-items:center;flex:none}
+.sd-n{flex:1;min-width:140px;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.sd-n b{display:block;font-size:14px;color:var(--ink)}
+.sd-chip{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px}
+.sd-chip.warn{background:var(--warn-bg);color:var(--warn)}
+.sd-chip.blue{background:var(--info-bg);color:var(--accent)}
+.sd-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sd-fields label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:3px}
+.sd-tip{font-size:12px;color:var(--muted)}
+.sd-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.cnae-list{margin:0;padding:10px;list-style:none;display:grid;gap:4px;font-size:13px;color:var(--ink-2);max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px}
 </style>
 </head>
 <body>
@@ -175,6 +197,7 @@ select.inp{appearance:auto}
   <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
@@ -322,6 +345,7 @@ function parseCartaoCNPJ(rows) {
       if (b.length >= 2) {
         const parts = splitByBoundaries(next, b);
         if (parts.nome) out.nomeFantasia = parts.nome;
+        if (parts.porte) out.porte = parts.porte;
       } else {
         out.nomeFantasia = rowText(next);
       }
@@ -340,6 +364,38 @@ function parseCartaoCNPJ(rows) {
         tmp.complemento = parts.comp || '';
       }
       tmp.enderecoRow = true;
+      // 2ª linha do complemento (ex: "SALA 05"): linha seguinte com itens só na coluna do complemento
+      const compB = b.find(x => x.key === 'comp');
+      const after = rows[i + 2];
+      if (compB && after && after.items.length && after.items.every(it => it.x >= compB.x - 10) && !/^(CEP|ENDERE)/i.test(rowText(after))) {
+        tmp.complemento = [tmp.complemento, rowText(after)].filter(Boolean).join(' ');
+      }
+    }
+
+    if (!out.dataAbertura && /DATA DE ABERTURA/i.test(t)) {
+      // a data fica logo abaixo do rótulo (mesma coluna), às vezes misturada com a linha do CNPJ
+      const lab = rows[i].items.find(it => /DATA DE ABERTURA/i.test(it.str));
+      for (let k = 1; k <= 3 && !out.dataAbertura; k++) {
+        const r = rows[i + k];
+        const it = r && lab && r.items.find(x => /^\d{2}\/\d{2}\/\d{4}$/.test(x.str.trim()) && Math.abs(x.x - lab.x) < 40);
+        if (it) out.dataAbertura = it.str.trim();
+      }
+    }
+
+    if (!out.naturezaJuridica && /NATUREZA JUR[ÍI]DICA/i.test(t) && next) {
+      out.naturezaJuridica = rowText(next);
+    }
+
+    if (!tmp.sitRow && /^SITUA[ÇC][ÃA]O CADASTRAL/i.test(t) && next) {
+      const b = colBoundaries(rows[i], [{key:'sit', re:/^SITUA[ÇC][ÃA]O$|^SITUA[ÇC][ÃA]O CADASTRAL$/i}, {key:'data', re:/^DATA DA SITUA/i}]);
+      if (b.length >= 2) {
+        const parts = splitByBoundaries(next, b);
+        if (parts.sit) out.situacaoCadastral = parts.sit;
+        if (parts.data) out.dataSituacao = parts.data;
+      } else {
+        out.situacaoCadastral = rowText(next);
+      }
+      tmp.sitRow = true;
     }
 
     if (!tmp.cepRow && /^CEP/i.test(t) && /BAIRRO/i.test(t) && next) {
@@ -368,6 +424,20 @@ function parseCartaoCNPJ(rows) {
     }
   }
 
+  // Atividades secundárias (várias linhas; as que quebram de linha começam em minúscula)
+  const sec = [];
+  let inSec = false, lastItem = false;
+  rows.forEach(r => {
+    const t = rowText(r);
+    if (/ATIVIDADES ECON[ÔO]MICAS SECUND[ÁA]RIAS/i.test(t)) { inSec = true; lastItem = false; return; }
+    if (/NATUREZA JUR[ÍI]DICA/i.test(t)) { inSec = false; lastItem = false; return; }
+    if (!inSec) return;
+    if (/^\d{2}\.\d{2}-\d-\d{2}\s*-/.test(t)) { sec.push(t); lastItem = true; }
+    else if (lastItem && /^[a-zà-ú]/.test(t)) { sec[sec.length - 1] += ' ' + t; }
+    else lastItem = false;
+  });
+  if (sec.length) out.atividadesSecundarias = sec.join('\n');
+
   const endereco = [
     tmp.logradouro,
     tmp.numero && `nº ${tmp.numero}`,
@@ -379,8 +449,132 @@ function parseCartaoCNPJ(rows) {
   if (endereco) out.endereco = endereco;
 
   Object.keys(out).forEach(k => {
-    if (!out[k] || /^\*+$/.test(out[k]) || out[k].length > 160) delete out[k];
+    if (!out[k] || /^\*+$/.test(out[k]) || (k !== 'atividadesSecundarias' && out[k].length > 160)) delete out[k];
   });
+  return out;
+}
+
+/* ── Leitura exata por tipo de documento ───────────────── */
+const DATE_RE = /\d{2}\/\d{2}\/\d{4}/;
+
+function addDays(ddmmyyyy, n) {
+  const [d, m, y] = ddmmyyyy.split('/').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear();
+}
+
+// Data no nome do arquivo (ex: "...31.03.27.pdf", "...02-02-2027.pdf") — só como último recurso para a validade.
+function dateFromFilename(filename) {
+  const base = String(filename || '').replace(/\.pdf$/i, '');
+  let m = base.match(/(\d{2})[.\-_](\d{2})[.\-_](\d{4})(?!\d)/);
+  if (m) return `${m[1]}/${m[2]}/${m[3]}`;
+  m = base.match(/(\d{2})[.\-_](\d{2})[.\-_](\d{2})(?!\d)/);
+  if (m) return `${m[1]}/${m[2]}/20${m[3]}`;
+  return null;
+}
+
+function firstDateAfter(text, labelRe, span = 120) {
+  const m = labelRe.exec(text);
+  if (!m) return null;
+  const d = text.slice(m.index + m[0].length, m.index + m[0].length + span).match(DATE_RE);
+  return d ? d[0] : null;
+}
+
+// Identifica o tipo do documento pelo conteúdo (e, se o texto do PDF for ilegível, pelo nome do arquivo).
+function classifyDoc(text, filename) {
+  const T = (text || '').replace(/\s+/g, ' ').toUpperCase();
+  const F = (filename || '').toUpperCase();
+  if (/COMPROVANTE DE INSCRI[ÇC][ÃA]O E DE SITUA/.test(T)) return 'cnpj';
+  if (/CART[ÃA]O DE INSCRI[ÇC][ÃA]O MUNICIPAL/.test(T)) return 'im';
+  if (/TRIBUTOS FEDERAIS/.test(T) && /D[ÍI]VIDA ATIVA DA UNI[ÃA]O/.test(T)) return 'cnd-federal';
+  if (/D[ÉE]BITOS TRABALHISTAS/.test(T)) return 'cndt';
+  if (/CERTIFICADO DE REGULARIDADE DO FGTS/.test(T)) return 'fgts';
+  if (/SECRETARIA DE ESTADO DA FAZENDA/.test(T) && /CERTID[ÃA]O NEGATIVA/.test(T)) return 'cnd-sefaz';
+  const Tn = T.replace(/ /g, ''); // alguns PDFs (TJAM) vêm com letras espaçadas
+  if (/FAL[ÊE]NCIA/.test(Tn) && /RECUPERA/.test(Tn)) return 'falencia';
+  if (/TRIBUTOS MUNICIPAIS/.test(T)) return 'cnd-municipal';
+  if (/SENATRAN|MINIST[ÉE]RIO DOS TRANSPORTES/.test(T) || /\bCNH\b/.test(F)) return 'cnh';
+  if (/JUNTA COMERCIAL/.test(T) && /CONTRATO/.test(T) || /CONTRATO[ _-]*SOCIAL/.test(F)) return 'contrato';
+  if (/BALAN.{1,2}O/.test(F) || /BALAN[ÇC]O PATRIMONIAL/.test(T)) return 'balanco';
+  if (/INSCRI.{0,3}O.{0,2}ESTADUAL/.test(F) || /INSCRI[ÇC][ÃA]O ESTADUAL/.test(T)) return 'ie';
+  if (/ALVAR[ÁA]|LICEN[ÇC]A DE (FUNCIONAMENTO|OPERA)/.test(T + ' ' + F)) return 'licenca';
+  return 'desconhecido';
+}
+
+// Qual aba recebe cada tipo.
+const KIND_INFO = {
+  'cnpj':          {tab:'empresa',    label:'Cartão CNPJ'},
+  'im':            {tab:'documentos',    label:'Cartão de Inscrição Municipal'},
+  'ie':            {tab:'certidoes',    label:'Cartão de Inscrição Estadual'},
+  'cnd-federal':   {tab:'certidoes',  label:'CND Federal (Receita Federal / PGFN)'},
+  'cndt':          {tab:'certidoes',  label:'CNDT - Débitos Trabalhistas'},
+  'fgts':          {tab:'certidoes',  label:'CRF - FGTS (Caixa)'},
+  'cnd-sefaz':     {tab:'certidoes',  label:'CND Estadual (SEFAZ-AM)'},
+  'falencia':      {tab:'certidoes',  label:'Certidão de Falência e Recuperação Judicial (TJAM)'},
+  'cnd-municipal': {tab:'certidoes',  label:'CND Municipal (SEMEF Manaus)'},
+  'contrato':      {tab:'documentos', label:'Contrato Social Consolidado'},
+  'balanco':       {tab:'documentos', label:'Balanço Patrimonial'},
+  'cnh':           {tab:'documentos', label:'CNH-e (sócio/representante)'},
+  'licenca':       {tab:'licencas',   label:'Licença'},
+};
+
+// Certidões: devolve {nome, emissao, validade}.
+function parseCertidao(kind, text, filename) {
+  const out = {nome: (KIND_INFO[kind] || {}).label || ''};
+  const t = text.replace(/[ \t]+/g, ' ');
+  if (kind === 'cnd-federal') {
+    out.emissao = firstDateAfter(t, /Emitida[^\n]{0,60}?do dia/i, 30);
+    out.validade = firstDateAfter(t, /V[áa]lida at[ée]/i, 30);
+    if (/POSITIVA COM EFEITOS/i.test(t)) out.nome = 'CND Federal (Positiva com Efeitos de Negativa)';
+  } else if (kind === 'cndt') {
+    out.emissao = firstDateAfter(t, /Expedi[çc][ãa]o:/i, 30);
+    out.validade = firstDateAfter(t, /Validade:/i, 30);
+  } else if (kind === 'fgts') {
+    const m = t.match(/Validade:\s*(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i);
+    if (m) { out.emissao = m[1]; out.validade = m[2]; }
+  } else if (kind === 'cnd-sefaz') {
+    out.emissao = firstDateAfter(t, /\bData:/, 20);
+    out.validade = firstDateAfter(t, /V[áa]lida at[ée]:/i, 20);
+  } else if (kind === 'falencia') {
+    out.emissao = firstDateAfter(t, /anteriores\s+[àa]\s+data\s+de/i, 20);
+    const dias = t.match(/validade de (\d+) dias/i);
+    if (out.emissao && dias) out.validade = addDays(out.emissao, parseInt(dias[1], 10));
+  } else if (kind === 'cnd-municipal') {
+    out.validade = firstDateAfter(t, /V[ÁA]LIDA AT[ÉE]/i, 20);
+    out.emissao = firstDateAfter(t, /Cadastrado em:/i, 20);
+  }
+  if (kind === 'cnd-sefaz') { const ie = t.match(/Inscri[çc][ãa]o:\s*([\d.\-]+)/i); if (ie) out.empresa = {ie: ie[1]}; }
+  if (kind === 'cnd-municipal') { const im = t.match(/INSCRI[ÇC][ÃA]O MUNICIPAL\s*:\s*(\d+)/i); if (im) out.empresa = {im: im[1]}; }
+  if (!out.validade) out.validade = dateFromFilename(filename);
+  Object.keys(out).forEach(k => { if (!out[k]) delete out[k]; });
+  return out;
+}
+
+// Documentos: nome sugerido + tipo/formato.
+function parseDocumento(kind, text, filename) {
+  const out = {nome: (KIND_INFO[kind] || {}).label || '', tipo: '', formato: 'PDF'};
+  const base = String(filename || '').replace(/\.pdf$/i, '');
+  if (kind === 'balanco') {
+    const m = base.match(/(\d{4})\D{1,3}(\d{4})/);
+    out.nome = m ? `Balanço Patrimonial ${m[1]}/${m[2]}` : 'Balanço Patrimonial';
+    out.tipo = 'Contábil';
+  } else if (kind === 'contrato') {
+    out.tipo = 'Societário';
+  } else if (kind === 'cnh') {
+    out.tipo = 'Identificação';
+  } else if (kind === 'im') {
+    out.tipo = 'Fiscal';
+    const d = firstDateAfter(text, /Data da Expedi[çc][ãa]o:/i, 20);
+    if (d) out.dataAtualizacao = d;
+  }
+  return out;
+}
+
+// Cartões IM / IE: dados para a aba Empresa.
+function parseCartaoMunicipal(text) {
+  const out = {};
+  const im = text.match(/Inscri[çc][ãa]o Municipal:\s*(\d+)/i);
+  if (im) out.im = im[1];
   return out;
 }
 
@@ -481,17 +675,6 @@ function findAllDates(text) {
   return (text.match(/\d{2}\/\d{2}\/\d{4}/g) || []);
 }
 
-function guessCertidaoNome(text) {
-  const T = text.toUpperCase();
-  if (T.includes('TRIBUTOS FEDERAIS') && T.includes('DÍVIDA ATIVA') || (T.includes('PGFN') && T.includes('RFB'))) return 'CND Federal (PGFN/RFB)';
-  if (T.includes('FGTS')) return 'CRF - FGTS (Caixa)';
-  if (T.includes('TRABALHISTA') || T.includes('CNDT')) return 'CNDT - Débitos Trabalhistas';
-  if (T.includes('TRIBUTOS ESTADUAIS') || T.includes('SEFAZ') || T.includes('FAZENDA ESTADUAL')) return 'CND Estadual';
-  if (T.includes('TRIBUTOS MUNICIPAIS') || (T.includes('PREFEITURA') && T.includes('CERTIDÃO'))) return 'CND Municipal';
-  if (T.includes('FALÊNCIA') || T.includes('RECUPERAÇÃO JUDICIAL')) return 'Certidão Negativa de Falência e Recuperação Judicial';
-  return null;
-}
-
 function guessOrgao(text) {
   const T = text.toUpperCase();
   if (T.includes('PREFEITURA MUNICIPAL DE MANAUS') || T.includes('PREFEITURA DE MANAUS')) return 'Prefeitura de Manaus';
@@ -552,6 +735,254 @@ function PdfDropZone({folder, label, onResult}) {
       </label>
       {note && <p className={`pdf-note ${note.ok ? 'ok' : 'warn'}`}>{note.msg}</p>}
     </div>
+  );
+}
+
+/* ── Limpeza de PDFs órfãos ───────────────── */
+// Apaga um PDF guardado (manifesto + pedaços).
+async function deleteArquivo(id) {
+  if (!id) return;
+  try {
+    const ref = db.collection('arquivos').doc(id);
+    const parts = await ref.collection('partes').get();
+    const batch = db.batch();
+    parts.docs.forEach(d => batch.delete(d.ref));
+    batch.delete(ref);
+    await batch.commit();
+  } catch (e) { console.error('Falha ao apagar PDF', id, e); }
+}
+
+// Controla os PDFs enviados durante a edição de um formulário, para não deixar lixo:
+// cancelar apaga os novos; salvar apaga os que ficaram sem uso (inclusive o antigo substituído).
+function usePdfSession(originalId) {
+  const ids = React.useRef([]);
+  return {
+    track(newId, currentId) {
+      if (currentId && ids.current.includes(currentId)) {
+        deleteArquivo(currentId);
+        ids.current = ids.current.filter(x => x !== currentId);
+      }
+      ids.current.push(newId);
+    },
+    afterSave(savedId) {
+      ids.current.filter(x => x !== savedId).forEach(deleteArquivo);
+      if (originalId && originalId !== savedId) deleteArquivo(originalId);
+      ids.current = [];
+    },
+    cancel() { ids.current.forEach(deleteArquivo); ids.current = []; },
+    afterRemove() {
+      ids.current.forEach(deleteArquivo);
+      if (originalId) deleteArquivo(originalId);
+      ids.current = [];
+    },
+  };
+}
+
+/* ── Soltar PDFs direto na aba ────────────── */
+const TAB_LABEL = {empresa:'Empresa', certidoes:'Certidões', documentos:'Documentos', licencas:'Licenças'};
+
+async function findExisting(tab, nome) {
+  const snap = await db.collection(tab).get();
+  if (tab === 'empresa') return snap.docs[0] || null;
+  const alvo = (nome || '').trim().toLowerCase();
+  return snap.docs.find(d => ((d.data().nome) || '').trim().toLowerCase() === alvo) || null;
+}
+
+function SmartDrop({currentTab}) {
+  const [hot, setHot] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [entries, setEntries] = useState([]);
+  const [msg, setMsg] = useState(null);
+
+  const upd = (key, patch) => setEntries(es => es.map(e => e.key === key ? {...e, ...patch} : e));
+  const drop = key => setEntries(es => es.filter(e => e.key !== key));
+
+  async function analyze(fileList) {
+    const pdfs = Array.from(fileList || []).filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
+    if (!pdfs.length) { setMsg({ok:false, msg:'Solte arquivos em PDF.'}); return; }
+    setBusy(true); setMsg(null);
+    const out = [];
+    for (const file of pdfs) {
+      const e = {key: Math.random().toString(36).slice(2), file, fileName: file.name, extras: null, empresa: null, error: null};
+      try {
+        if (file.size > MAX_PDF_BYTES) throw friendlyError(`PDF muito grande (${fmtFileSize(file.size)}). Limite: ${fmtFileSize(MAX_PDF_BYTES)}.`);
+        let rows = [];
+        try { rows = await extractPdfRows(file); } catch (err) { console.error('Falha ao ler PDF', err); }
+        const text = rows.map(rowText).join('\n');
+        const kind = classifyDoc(text, file.name);
+        const info = KIND_INFO[kind];
+        e.kind = kind;
+        e.known = !!info;
+        e.tab = info ? info.tab : (currentTab === 'empresa' ? 'documentos' : currentTab);
+        e.nome = info ? info.label : suggestNomeFromFile(file.name);
+        if (e.tab === 'empresa') {
+          e.empresa = parseCartaoCNPJ(rows);
+          if (e.empresa.razaoSocial) e.nome = 'Cartão CNPJ — ' + e.empresa.razaoSocial;
+        } else if (e.tab === 'certidoes') {
+          const p = info ? parseCertidao(kind, text, file.name) : {
+            validade: findDateNearKeywords(text, ['VALIDADE','VÁLIDA ATÉ','VALIDO ATE','VÁLIDO ATÉ','VENCIMENTO']) || dateFromFilename(file.name),
+            emissao: findDateNearKeywords(text, ['EMISS','EXPEDI']),
+          };
+          e.nome = p.nome || e.nome; e.emissao = p.emissao || ''; e.validade = p.validade || ''; e.extras = p.empresa || null;
+        } else if (e.tab === 'documentos') {
+          const p = info ? parseDocumento(kind, text, file.name) : {};
+          e.nome = p.nome || e.nome; e.dataAtualizacao = p.dataAtualizacao || fmtDate(new Date());
+          if (kind === 'im') e.extras = parseCartaoMunicipal(text);
+        } else if (e.tab === 'licencas') {
+          e.orgao = guessOrgao(text) || '';
+          e.validade = findDateNearKeywords(text, ['VALIDADE','VÁLIDA ATÉ','VALIDO ATE','VÁLIDO ATÉ','VENCIMENTO']) || dateFromFilename(file.name) || '';
+        }
+        const ex = await findExisting(e.tab, e.nome);
+        e.matchId = ex ? ex.id : null;
+      } catch (err) {
+        console.error(err);
+        e.error = err && err.friendly ? err.message : 'Não foi possível ler este arquivo.';
+      }
+      out.push(e);
+    }
+    setEntries(es => [...es, ...out]);
+    setBusy(false);
+  }
+
+  async function saveAll() {
+    setSaving(true); setMsg(null);
+    const extras = {};
+    let ok = 0, fail = 0;
+    for (const e of entries) {
+      if (e.error) { fail++; continue; }
+      let newPdf = null;
+      try {
+        newPdf = await uploadPdfToStorage(e.file, e.tab);
+        const pdf = {pdfId: newPdf.id, pdfNome: newPdf.nome};
+        const ex = await findExisting(e.tab, e.nome);
+        const oldPdf = ex ? ex.data().pdfId : null;
+        const ts = firebase.firestore.FieldValue.serverTimestamp();
+        let data;
+        if (e.tab === 'empresa') {
+          data = {...e.empresa, ...pdf};
+          if (ex) await db.collection('empresa').doc(ex.id).update(data);
+          else {
+            if (!data.razaoSocial) throw friendlyError('Não encontrei a razão social neste PDF.');
+            await db.collection('empresa').add({...data, criadoEm: ts});
+          }
+        } else {
+          if (e.tab === 'certidoes') data = {nome: e.nome.trim(), emissao: (e.emissao||'').trim(), validade: (e.validade||'').trim(), ...pdf};
+          else if (e.tab === 'documentos') data = {nome: e.nome.trim(), tipo:'pdf', formato:'PDF', tamanho: fmtFileSize(e.file.size), dataAtualizacao: (e.dataAtualizacao||'').trim(), ...pdf};
+          else data = {nome: e.nome.trim(), orgao: (e.orgao||'').trim(), validade: (e.validade||'').trim(), ...pdf};
+          if (ex) await db.collection(e.tab).doc(ex.id).update(data);
+          else await db.collection(e.tab).add({...data, criadoEm: ts});
+        }
+        if (oldPdf && oldPdf !== newPdf.id) deleteArquivo(oldPdf);
+        if (e.extras) Object.assign(extras, e.extras);
+        ok++;
+      } catch (err) {
+        console.error(err);
+        if (newPdf) deleteArquivo(newPdf.id);
+        e.error = err && err.friendly ? err.message : 'Erro ao salvar este arquivo.';
+        fail++;
+      }
+    }
+    // Inscrição Estadual / Municipal encontradas nas certidões vão para a aba Empresa
+    let extraNote = '';
+    if (ok && Object.keys(extras).length) {
+      try {
+        const emp = await findExisting('empresa');
+        if (emp) { await db.collection('empresa').doc(emp.id).update(extras); extraNote = ' Inscrições atualizadas na aba Empresa.'; }
+      } catch (err) { console.error(err); }
+    }
+    setEntries(es => es.filter(e => e.error));
+    setSaving(false);
+    setMsg(fail
+      ? {ok:false, msg:`${ok} salvo(s), ${fail} com problema (veja abaixo).${extraNote}`}
+      : {ok:true, msg:`${ok} arquivo(s) salvo(s).${extraNote}`});
+  }
+
+  const tabOpts = [['certidoes','Certidão'],['documentos','Documento'],['licencas','Licença']];
+
+  return (
+    <>
+      <div
+        className={`sd-drop${hot ? ' hot' : ''}`}
+        onDragOver={e => { e.preventDefault(); setHot(true); }}
+        onDragLeave={() => setHot(false)}
+        onDrop={e => { e.preventDefault(); setHot(false); analyze(e.dataTransfer.files); }}
+      >
+        <div className="sd-ico"><Icon name="upload"/></div>
+        <div className="sd-t">
+          <strong>{busy ? 'Lendo os PDFs…' : 'Solte aqui os PDFs — pode ser vários de uma vez'}</strong>
+          <span>O sistema reconhece o tipo (CNPJ, CND Federal, FGTS, Trabalhista, Estadual, Municipal, Falência…) e preenche sozinho. Você confere antes de salvar.</span>
+        </div>
+        <label className="btn sm" style={{cursor:'pointer'}}>
+          <Icon name="file"/> Selecionar PDFs
+          <input type="file" accept="application/pdf" multiple style={{display:'none'}} disabled={busy || saving}
+            onChange={e => { const fs = e.target.files; analyze(fs); e.target.value = ''; }}/>
+        </label>
+      </div>
+      {msg && <p className={`pdf-note ${msg.ok ? 'ok' : 'warn'}`} style={{marginBottom:12}}>{msg.msg}</p>}
+
+      {entries.length > 0 && (
+        <div className="card">
+          <div className="card-h">
+            <h2>Revisar antes de salvar · {entries.length} arquivo{entries.length > 1 ? 's' : ''}</h2>
+            <span className="sd-tip">Nada é gravado até você confirmar</span>
+          </div>
+          {entries.map(e => (
+            <div className="sd-rev" key={e.key}>
+              <div className="sd-rev-h">
+                <div className="sd-pdfi"><Icon name="file"/></div>
+                <div className="sd-n"><b>{e.error ? e.fileName : (e.tab === 'empresa' ? 'Cartão CNPJ' : e.nome)}</b>{e.fileName}</div>
+                {e.error ? <span className="sd-chip warn">{e.error}</span> : (
+                  <>
+                    {!e.known && <span className="sd-chip warn">Tipo não reconhecido</span>}
+                    <span className={`sd-chip ${e.matchId ? 'warn' : 'blue'}`}>
+                      {e.tab === 'empresa' ? 'Atualiza a Empresa' : (e.matchId ? 'Substitui a anterior' : 'Nova')} · {TAB_LABEL[e.tab]}
+                    </span>
+                  </>
+                )}
+                <button className="x" title="Remover da lista" onClick={() => drop(e.key)}><Icon name="x"/></button>
+              </div>
+              {!e.error && e.tab === 'empresa' && (
+                <p className="sd-tip" style={{margin:0}}>
+                  Vai preencher: {Object.keys(e.empresa).filter(k => k !== 'atividadesSecundarias').length} campos
+                  {e.empresa.atividadesSecundarias ? ` + ${e.empresa.atividadesSecundarias.split('\n').length} atividades secundárias` : ''}
+                  {e.empresa.razaoSocial ? ` (${e.empresa.razaoSocial})` : ''}.
+                </p>
+              )}
+              {!e.error && e.tab !== 'empresa' && (
+                <div className="sd-fields">
+                  {!e.known && (
+                    <div><label>Guardar em</label>
+                      <select className="inp" value={e.tab} onChange={ev => upd(e.key, {tab: ev.target.value})}>
+                        {tabOpts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div style={{gridColumn: '1 / -1'}}><label>Nome</label><input className="inp" value={e.nome} onChange={ev => upd(e.key, {nome: ev.target.value})}/></div>
+                  {e.tab === 'certidoes' && <><div><label>Emissão</label><input className="inp" value={e.emissao || ''} onChange={ev => upd(e.key, {emissao: ev.target.value})} placeholder="dd/mm/aaaa"/></div>
+                    <div><label>Validade</label><input className="inp" value={e.validade || ''} onChange={ev => upd(e.key, {validade: ev.target.value})} placeholder="dd/mm/aaaa"/></div></>}
+                  {e.tab === 'licencas' && <><div><label>Órgão</label><input className="inp" value={e.orgao || ''} onChange={ev => upd(e.key, {orgao: ev.target.value})}/></div>
+                    <div><label>Validade</label><input className="inp" value={e.validade || ''} onChange={ev => upd(e.key, {validade: ev.target.value})} placeholder="dd/mm/aaaa"/></div></>}
+                  {e.tab === 'documentos' && <div><label>Data de atualização</label><input className="inp" value={e.dataAtualizacao || ''} onChange={ev => upd(e.key, {dataAtualizacao: ev.target.value})}/></div>}
+                </div>
+              )}
+              {!e.error && e.extras && (e.extras.ie || e.extras.im) && (
+                <p className="sd-tip" style={{margin:0}}>Também encontrei {e.extras.ie ? `a Inscrição Estadual ${e.extras.ie}` : `a Inscrição Municipal ${e.extras.im}`} — será preenchida na aba Empresa.</p>
+              )}
+              {!e.error && e.kind === 'ie' && <p className="sd-tip" style={{margin:0}}>Este PDF é imagem: o tipo e a validade vieram do nome do arquivo. Confira a validade.</p>}
+              {!e.error && e.kind === 'balanco' && <p className="sd-tip" style={{margin:0}}>PDF digitalizado (imagem): só o nome foi reconhecido.</p>}
+            </div>
+          ))}
+          <div className="sd-bar">
+            <span className="sd-tip">PDFs antigos substituídos são apagados automaticamente.</span>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn" disabled={saving} onClick={() => setEntries([])}>Cancelar</button>
+              <button className="btn primary" disabled={saving || !entries.some(e => !e.error)} onClick={saveAll}>{saving ? 'Salvando…' : `Salvar tudo (${entries.filter(e => !e.error).length})`}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -620,6 +1051,8 @@ function EmpresaTab() {
 
   if (!empresa && !editing) {
     return (
+      <>
+      <SmartDrop currentTab="empresa" />
       <div className="card">
         <div className="empty">
           <p>Nenhum dado da empresa cadastrado.</p>
@@ -628,11 +1061,13 @@ function EmpresaTab() {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   return (
     <>
+      <SmartDrop currentTab="empresa" />
       <div className="card">
         <div className="card-h">
           <h2><Icon name="building"/> Dados da Empresa</h2>
@@ -646,6 +1081,10 @@ function EmpresaTab() {
               ['CNPJ', empresa.cnpj],
               ['Inscrição Estadual', empresa.ie],
               ['Inscrição Municipal', empresa.im],
+              ['Porte', empresa.porte],
+              ['Data de Abertura', empresa.dataAbertura],
+              ['Situação Cadastral', [empresa.situacaoCadastral, empresa.dataSituacao && `desde ${empresa.dataSituacao}`].filter(Boolean).join(' ')],
+              ['Natureza Jurídica', empresa.naturezaJuridica],
               ['CNAE Principal', empresa.cnae],
               ['Endereço', empresa.endereco],
               ['Telefone', empresa.telefone],
@@ -654,6 +1093,12 @@ function EmpresaTab() {
             ].map(([l,v]) => (
               <div className="info-item" key={l}><label>{l}</label><span>{v || '—'}</span></div>
             ))}
+          </div>
+        )}
+        {empresa && empresa.atividadesSecundarias && (
+          <div style={{marginTop:18}}>
+            <div className="info-item"><label>Atividades Secundárias ({empresa.atividadesSecundarias.split('\n').length})</label></div>
+            <ul className="cnae-list">{empresa.atividadesSecundarias.split('\n').map((l,i) => <li key={i}>{l}</li>)}</ul>
           </div>
         )}
         {empresa && empresa.pdfId && (
@@ -669,13 +1114,16 @@ function EmpresaTab() {
 
 function EmpresaForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {razaoSocial:'',nomeFantasia:'',cnpj:'',ie:'',im:'',cnae:'',endereco:'',telefone:'',email:'',responsavel:'',pdfId:'',pdfNome:''};
+  const empty = {razaoSocial:'',nomeFantasia:'',cnpj:'',ie:'',im:'',cnae:'',endereco:'',telefone:'',email:'',responsavel:'',porte:'',dataAbertura:'',situacaoCadastral:'',dataSituacao:'',naturezaJuridica:'',atividadesSecundarias:'',pdfId:'',pdfNome:''};
   const [form, setForm] = useState(data ? {...empty,...data} : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const pdf = usePdfSession(data && data.pdfId);
+  const close = () => { pdf.cancel(); onClose(); };
 
   function handlePdfResult({uploaded, rows}) {
+    pdf.track(uploaded.id, form.pdfId);
     const found = parseCartaoCNPJ(rows);
     setForm(f => ({...f, ...found, pdfId: uploaded.id, pdfNome: uploaded.nome}));
   }
@@ -688,12 +1136,13 @@ function EmpresaForm({data, onClose}) {
       Object.keys(empty).forEach(k => d[k] = (form[k]||'').trim());
       if (isEdit) await db.collection('empresa').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('empresa').add(d); }
+      pdf.afterSave(d.pdfId);
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
   }
 
   return (
-    <Dialog title={isEdit ? 'Editar Empresa' : 'Cadastrar Empresa'} onClose={onClose} onSave={save} saving={saving} err={err}>
+    <Dialog title={isEdit ? 'Editar Empresa' : 'Cadastrar Empresa'} onClose={close} onSave={save} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="empresa" label="Importar do Cartão CNPJ" onResult={handlePdfResult} />
         {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
@@ -712,6 +1161,16 @@ function EmpresaForm({data, onClose}) {
           <div className="f"><label>Telefone</label><input className="inp" value={form.telefone} onChange={e=>set('telefone',e.target.value)}/></div>
           <div className="f"><label>E-mail</label><input className="inp" value={form.email} onChange={e=>set('email',e.target.value)}/></div>
         </div>
+        <div className="row2">
+          <div className="f"><label>Porte</label><input className="inp" value={form.porte} onChange={e=>set('porte',e.target.value)}/></div>
+          <div className="f"><label>Data de Abertura</label><input className="inp" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+        </div>
+        <div className="row2">
+          <div className="f"><label>Situação Cadastral</label><input className="inp" value={form.situacaoCadastral} onChange={e=>set('situacaoCadastral',e.target.value)}/></div>
+          <div className="f"><label>Data da Situação</label><input className="inp" value={form.dataSituacao} onChange={e=>set('dataSituacao',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+        </div>
+        <div className="f"><label>Natureza Jurídica</label><input className="inp" value={form.naturezaJuridica} onChange={e=>set('naturezaJuridica',e.target.value)}/></div>
+        <div className="f"><label>Atividades Secundárias (uma por linha)</label><textarea className="inp" rows={5} value={form.atividadesSecundarias} onChange={e=>set('atividadesSecundarias',e.target.value)}/></div>
         <div className="f"><label>Responsável Legal</label><input className="inp" value={form.responsavel} onChange={e=>set('responsavel',e.target.value)}/></div>
       </div>
     </Dialog>
@@ -728,6 +1187,7 @@ function CertidoesTab() {
 
   return (
     <>
+      <SmartDrop currentTab="certidoes" />
       <div className="card">
         <div className="card-h">
           <h2><Icon name="shield"/> Certidões</h2>
@@ -770,8 +1230,11 @@ function CertidaoForm({data, onClose}) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const pdf = usePdfSession(data && data.pdfId);
+  const close = () => { pdf.cancel(); onClose(); };
 
   function handlePdfResult({uploaded, text}) {
+    pdf.track(uploaded.id, form.pdfId);
     const nomeGuess = !form.nome.trim() ? guessCertidaoNome(text) : null;
     const validadeGuess = findDateNearKeywords(text, ['VALIDADE','VÁLIDA ATÉ','VALIDO ATE','VÁLIDO ATÉ','VENCIMENTO']);
     const emissaoGuess = findDateNearKeywords(text, ['EMISS', 'EXPEDI', 'DATA DE EMISSÃO']);
@@ -793,6 +1256,7 @@ function CertidaoForm({data, onClose}) {
       const d = {nome:form.nome.trim(), emissao:(form.emissao||'').trim(), validade:(form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('certidoes').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('certidoes').add(d); }
+      pdf.afterSave(d.pdfId);
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
   }
@@ -800,12 +1264,12 @@ function CertidaoForm({data, onClose}) {
   async function remove() {
     if (!window.confirm('Excluir esta certidão?')) return;
     setSaving(true);
-    try { await db.collection('certidoes').doc(data.id).delete(); onClose(); }
+    try { await db.collection('certidoes').doc(data.id).delete(); pdf.afterRemove(); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
   return (
-    <Dialog title={isEdit ? 'Editar Certidão' : 'Nova Certidão'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+    <Dialog title={isEdit ? 'Editar Certidão' : 'Nova Certidão'} onClose={close} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="certidoes" label="Importar certidão em PDF" onResult={handlePdfResult} />
         {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
@@ -830,6 +1294,7 @@ function DocumentosTab() {
 
   return (
     <>
+      <SmartDrop currentTab="documentos" />
       <div className="card">
         <div className="card-h">
           <h2><Icon name="file"/> Documentos Societários</h2>
@@ -862,8 +1327,11 @@ function DocumentoForm({data, onClose}) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const pdf = usePdfSession(data && data.pdfId);
+  const close = () => { pdf.cancel(); onClose(); };
 
   function handlePdfResult({file, uploaded}) {
+    pdf.track(uploaded.id, form.pdfId);
     setForm(f => ({
       ...f,
       nome: f.nome.trim() || suggestNomeFromFile(file.name),
@@ -883,6 +1351,7 @@ function DocumentoForm({data, onClose}) {
       const d = {nome:form.nome.trim(), tipo:(form.tipo||'pdf').trim(), formato:(form.formato||'').trim(), tamanho:(form.tamanho||'').trim(), dataAtualizacao:(form.dataAtualizacao||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('documentos').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('documentos').add(d); }
+      pdf.afterSave(d.pdfId);
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
   }
@@ -890,12 +1359,12 @@ function DocumentoForm({data, onClose}) {
   async function remove() {
     if (!window.confirm('Excluir este documento?')) return;
     setSaving(true);
-    try { await db.collection('documentos').doc(data.id).delete(); onClose(); }
+    try { await db.collection('documentos').doc(data.id).delete(); pdf.afterRemove(); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
   return (
-    <Dialog title={isEdit ? 'Editar Documento' : 'Novo Documento'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+    <Dialog title={isEdit ? 'Editar Documento' : 'Novo Documento'} onClose={close} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="documentos" label="Arraste o documento em PDF" onResult={handlePdfResult} />
         {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
@@ -926,6 +1395,7 @@ function LicencasTab() {
 
   return (
     <>
+      <SmartDrop currentTab="licencas" />
       <div className="card">
         <div className="card-h">
           <h2><Icon name="key"/> Licenças e Alvarás</h2>
@@ -968,8 +1438,11 @@ function LicencaForm({data, onClose}) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const pdf = usePdfSession(data && data.pdfId);
+  const close = () => { pdf.cancel(); onClose(); };
 
   function handlePdfResult({file, uploaded, text}) {
+    pdf.track(uploaded.id, form.pdfId);
     const orgaoGuess = !form.orgao.trim() ? guessOrgao(text) : null;
     const validadeGuess = findDateNearKeywords(text, ['VALIDADE','VÁLIDA ATÉ','VALIDO ATE','VÁLIDO ATÉ','VENCIMENTO']);
     const dates = findAllDates(text);
@@ -990,6 +1463,7 @@ function LicencaForm({data, onClose}) {
       const d = {nome:form.nome.trim(), orgao:(form.orgao||'').trim(), validade:(form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('licencas').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('licencas').add(d); }
+      pdf.afterSave(d.pdfId);
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
   }
@@ -997,12 +1471,12 @@ function LicencaForm({data, onClose}) {
   async function remove() {
     if (!window.confirm('Excluir esta licença?')) return;
     setSaving(true);
-    try { await db.collection('licencas').doc(data.id).delete(); onClose(); }
+    try { await db.collection('licencas').doc(data.id).delete(); pdf.afterRemove(); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
   return (
-    <Dialog title={isEdit ? 'Editar Licença' : 'Nova Licença'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+    <Dialog title={isEdit ? 'Editar Licença' : 'Nova Licença'} onClose={close} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="licencas" label="Arraste a licença/alvará em PDF" onResult={handlePdfResult} />
         {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
@@ -1062,8 +1536,11 @@ function PatrimonioForm({data, onClose}) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const pdf = usePdfSession(data && data.pdfId);
+  const close = () => { pdf.cancel(); onClose(); };
 
   function handlePdfResult({file, uploaded}) {
+    pdf.track(uploaded.id, form.pdfId);
     setForm(f => ({...f, nome: f.nome.trim() || suggestNomeFromFile(file.name), pdfId: uploaded.id, pdfNome: uploaded.nome}));
   }
 
@@ -1074,6 +1551,7 @@ function PatrimonioForm({data, onClose}) {
       const d = {nome:form.nome.trim(), detalhes:(form.detalhes||'').trim(), placa:(form.placa||'').trim(), aquisicao:(form.aquisicao||'').trim(), valor:Number(form.valor)||0, pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('patrimonio').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('patrimonio').add(d); }
+      pdf.afterSave(d.pdfId);
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
   }
@@ -1081,12 +1559,12 @@ function PatrimonioForm({data, onClose}) {
   async function remove() {
     if (!window.confirm('Excluir este item?')) return;
     setSaving(true);
-    try { await db.collection('patrimonio').doc(data.id).delete(); onClose(); }
+    try { await db.collection('patrimonio').doc(data.id).delete(); pdf.afterRemove(); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
   return (
-    <Dialog title={isEdit ? 'Editar Item' : 'Novo Item'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
+    <Dialog title={isEdit ? 'Editar Item' : 'Novo Item'} onClose={close} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <PdfDropZone folder="patrimonio" label="Anexar nota fiscal / comprovante (PDF)" onResult={handlePdfResult} />
         {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
