@@ -297,13 +297,13 @@ function useCol(name){
 
 /* ── Shell ── */
 const NAV = [
-  {key:'index',          nome:'Painel',         icon:'grid',     active:true},
-  {key:'contatos',       nome:'Contatos',       icon:'users'},
-  {key:'pedidos',        nome:'Pedidos',        icon:'package'},
-  {key:'financeiro',     nome:'Financeiro',     icon:'wallet'},
-  {key:'administrativo', nome:'Administrativo', icon:'building'},
-  {key:'estoque',        nome:'Estoque',        icon:'box'},
-  {key:'licitacao',      nome:'Licitação',      icon:'gavel'},
+  {key:'index',          nome:'Painel',         icon:'grid',     active:true, href:'index.html'},
+  {key:'contatos',       nome:'Contatos',       icon:'users',        href:'contatos.html'},
+  {key:'pedidos',        nome:'Pedidos',        icon:'package',      href:'pedidos.html'},
+  {key:'financeiro',     nome:'Financeiro',     icon:'wallet',       href:'financeiro.html'},
+  {key:'administrativo', nome:'Administrativo', icon:'building',     href:'administrativo.html'},
+  {key:'estoque',        nome:'Estoque',        icon:'box',          href:'estoque.html'},
+  {key:'licitacao',      nome:'Licitação',      icon:'gavel',        href:'licitacao.html'},
 ];
 function go(n){
   if(n.soon) return;
@@ -321,9 +321,9 @@ function Sidebar(){
       </div>
       <nav className="nav">
         {NAV.map(n => (
-          <button key={n.key} className={"navi" + (n.active ? " active" : "")} onClick={() => go(n)}>
+          <a key={n.key} className={"navi" + (n.active ? " active" : "")} href={n.href}>
             <Icon name={n.icon} />{n.nome}
-          </button>
+          </a>
         ))}
         <div className="lab">Sistema</div>
         <button className="navi soon"><Icon name="chart" />Relatórios</button>
