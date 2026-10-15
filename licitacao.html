@@ -107,8 +107,17 @@ button,input,select,textarea{font-family:inherit}
 .ed-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .ed-top h4{margin:0;font-size:14.5px;font-weight:600}
 .ed-obj{margin:0 0 8px;font-size:13px;color:var(--ink-2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ed-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted)}
+.ed-meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
 .ed-meta span{display:inline-flex;align-items:center;gap:5px}
+.ed-folder{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--accent);text-decoration:none;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:20px;padding:3px 10px;margin-left:auto}
+.ed-folder:hover{background:var(--hover)}
+.ed-folder .ic{width:13px;height:13px}
+.linkrow{display:flex;gap:8px}
+.linkrow .inp{flex:1;min-width:0}
+.hint{margin:6px 0 0;font-size:12px;color:var(--muted)}
+.btn.drive{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);white-space:nowrap}
+@media (max-width:560px){ .linkrow{flex-wrap:wrap} .linkrow .btn{width:100%} }
 
 /* Status badges */
 .st{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
@@ -217,6 +226,8 @@ body{padding-left:238px}
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
   <symbol id="i-package" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
@@ -376,6 +387,7 @@ function fmtBRL(v) {
   if (isNaN(n) || n === 0) return '—';
   return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 }
+function isValidUrl(v) { return /^https?:\/\/\S+$/i.test((v||'').trim()); }
 
 function fmtDate(ts) {
   if (!ts) return '';
@@ -390,7 +402,7 @@ function toInputDate(ts) {
 }
 
 /* ── Edital Dialog ───────────────────────── */
-const emptyEdital = {numero:'', orgao:'', objeto:'', modalidade:'Pregão Eletrônico', status:'Em análise', valorEstimado:'', dataAbertura:'', observacoes:''};
+const emptyEdital = {numero:'', orgao:'', objeto:'', modalidade:'Pregão Eletrônico', status:'Em análise', valorEstimado:'', dataAbertura:'', pastaUrl:'', observacoes:''};
 
 function EditalDialog({initial, onClose, onSaved}) {
   const isEdit = !!(initial && initial.id);
@@ -416,6 +428,7 @@ function EditalDialog({initial, onClose, onSaved}) {
         status: form.status,
         valorEstimado: parseFloat(form.valorEstimado) || 0,
         dataAbertura: form.dataAbertura ? new Date(form.dataAbertura + 'T12:00:00') : null,
+        pastaUrl: (form.pastaUrl || '').trim(),
         observacoes: (form.observacoes || '').trim(),
       };
       if (isEdit) {
@@ -475,6 +488,14 @@ function EditalDialog({initial, onClose, onSaved}) {
           <div className="f"><label>Data abertura</label><input className="inp" type="date" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} /></div>
         </div>
         <div className="f"><label>Valor estimado (R$)</label><input className="inp" type="number" min="0" step="0.01" value={form.valorEstimado} onChange={e=>set('valorEstimado',e.target.value)} placeholder="0,00" /></div>
+        <div className="f">
+          <label>Pasta da documentação (link do Google Drive)</label>
+          <div className="linkrow">
+            <input className="inp" value={form.pastaUrl||''} onChange={e=>set('pastaUrl',e.target.value)} placeholder="Cole aqui o link da pasta do edital" />
+            {isValidUrl(form.pastaUrl) && <a className="btn drive" href={form.pastaUrl.trim()} target="_blank" rel="noopener"><Icon name="folder"/> Abrir pasta</a>}
+          </div>
+          <p className="hint">{form.pastaUrl && !isValidUrl(form.pastaUrl) ? 'Cole o link completo, começando com https://' : 'Só o link é guardado, nenhum arquivo entra no sistema.'}</p>
+        </div>
         <div className="f"><label>Observações</label><textarea className="inp" rows="2" value={form.observacoes||''} onChange={e=>set('observacoes',e.target.value)} placeholder="Anotações, links, documentos"></textarea></div>
       </div>
     </Dialog>
@@ -698,7 +719,9 @@ function App() {
             {filteredEditais.length > 0 && (
               <div className="ed-list">
                 {filteredEditais.map(e => (
-                  <button key={e.id} className="ed-card" onClick={() => setEditEdital(e)}>
+                  <div key={e.id} className="ed-card" role="button" tabIndex={0}
+                       onClick={() => setEditEdital(e)}
+                       onKeyDown={ev => { if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); setEditEdital(e); } }}>
                     <div className="ed-top">
                       <h4>{e.numero || '—'}{e.orgao ? ` — ${e.orgao}` : ''}</h4>
                       <span className={"st " + (STATUS_CLS[e.status] || 'analise')}>● {e.status}</span>
@@ -708,8 +731,14 @@ function App() {
                       <span><Icon name="gavel"/>{e.modalidade || '—'}</span>
                       {e.dataAbertura && <span><Icon name="calendar"/>{fmtDate(e.dataAbertura)}</span>}
                       {e.valorEstimado > 0 && <span><Icon name="dollar"/>{fmtBRL(e.valorEstimado)}</span>}
+                      {isValidUrl(e.pastaUrl) && (
+                        <a className="ed-folder" href={e.pastaUrl.trim()} target="_blank" rel="noopener"
+                           onClick={ev => ev.stopPropagation()}>
+                          <Icon name="folder"/>Abrir pasta<Icon name="external"/>
+                        </a>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
