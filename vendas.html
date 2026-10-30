@@ -59,15 +59,39 @@ button,input,select,textarea{font-family:inherit}
 .page-h{margin:0 0 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
 .page-h p{margin:0;color:var(--muted);font-size:13px}
+.hbtns{display:flex;gap:8px;flex-wrap:wrap}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13.5px;cursor:pointer}
 .btn:hover{background:var(--hover)}
 .btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .btn.primary:hover{filter:brightness(1.15)}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.accent:hover{filter:brightness(1.1)}
 .btn.danger{color:var(--alert);border-color:var(--alert)}
 .btn.danger:hover{background:var(--alert-bg)}
 .btn.sm{height:30px;font-size:12px;padding:0 10px}
 .btn[disabled]{opacity:.5;cursor:default}
+.badge-new{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:2px;font-size:10.5px;font-weight:700;color:#fff;background:rgba(255,255,255,.28);border-radius:20px}
+
+/* Painel de importação */
+.panel{background:var(--surface);border:1.5px solid var(--accent);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.panel-h{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--col)}
+.panel-h .chip{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none}
+.panel-h .chip .ic{width:17px;height:17px}
+.panel-h h2{margin:0;font-size:14.5px;font-weight:700}
+.panel-h p{margin:2px 0 0;font-size:12.5px;color:var(--ink-2)}
+.panel-b{padding:4px 20px 2px}
+.improw{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+.improw:last-child{border-bottom:0}
+.improw .nome{font-weight:600}
+.improw .meta{color:var(--muted);font-size:12px;margin-top:1px}
+.improw .valor{font-weight:700;white-space:nowrap}
+.panel-f{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid var(--line);background:var(--col)}
+.panel-f .tot{font-size:13px}
+.panel-f .tot b{font-size:15px}
+.panel-f .acts{display:flex;gap:8px}
+.hint-box{display:flex;gap:9px;align-items:flex-start;background:var(--warn-bg);color:var(--warn);border-radius:9px;padding:10px 12px;font-size:12px;margin:12px 20px 16px}
+.hint-box .ic{width:15px;height:15px;margin-top:1px;flex:none}
 
 /* Cards de status (Vendas) */
 .vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
@@ -128,6 +152,8 @@ button,input,select,textarea{font-family:inherit}
 .inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
 .inp:focus{border-color:var(--accent);outline:none}
 select.inp{appearance:auto}
+textarea.inp{height:70px;resize:vertical;font-family:inherit}
+.fgroup-lab{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:2px 0 -4px}
 .err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
 .nf-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none}
 .nf-link:hover{text-decoration:underline}
@@ -221,6 +247,7 @@ body{padding-left:238px}
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
 </svg>
 
 <div id="root"></div>
@@ -270,6 +297,70 @@ const STATUS_META = {
   nao_aprovado: { label: 'Não Aprovado', icon: 'alert', cardTitle: 'Orçamentos Não Aprovados' },
 };
 function statusCls(s) { return s === 'aprovado' ? 'ok' : s === 'nao_aprovado' ? 'alert' : 'warn'; }
+
+/* ── Importar pedidos do grupo "Comercial" (Pedidos) ───────── */
+/* Espelha a lógica de groupOfStage do app Pedidos, para achar quais etapas
+   pertencem ao card "Comercial" mesmo que o usuário tenha personalizado as etapas. */
+const PEDIDOS_DEFAULT_STAGES = [
+  { id:"proposta",  group:"comercial" },
+  { id:"pendente",  group:"pendente" },
+  { id:"confeccao", group:"producao" },
+  { id:"entrega",   group:"logistica" },
+  { id:"entregue",  group:"logistica" },
+];
+function stageGroup(id, allStages) {
+  const s = (allStages || []).find(x => x.id === id);
+  if (s && s.group) return s.group;
+  const d = PEDIDOS_DEFAULT_STAGES.find(x => x.id === id);
+  if (d) return d.group;
+  if (/fatur/i.test(id) || (s && /fatur/i.test(s.label || ""))) return "faturamento";
+  return "";
+}
+function useDocData(col, id) {
+  const [data, setData] = useState(undefined); // undefined = carregando
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection(col).doc(id).onSnapshot(
+      snap => setData(snap.exists ? snap.data() : null),
+      () => setData(null)
+    );
+    return unsub;
+  }, [col, id]);
+  return data;
+}
+function buildOrcamentoFromPedido(p) {
+  let dataStr = todayBR();
+  if (p.criadoEm) {
+    const d = new Date(p.criadoEm);
+    if (!isNaN(d)) dataStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  }
+  return {
+    cliente: p.cliente || '',
+    descricao: p.descricao || '',
+    numero: p.numero || '',
+    quantidade: p.quantidade ?? '',
+    valorUnit: p.valorUnit ?? '',
+    valor: Number(p.valor || 0),
+    custo: p.custo ?? '',
+    frete: p.frete ?? '',
+    despesas: p.despesas ?? '',
+    prazo: p.prazo || '',
+    responsavel: p.responsavel || '',
+    prioridade: p.prioridade || 'media',
+    observacoes: p.observacoes || '',
+    extras: p.extras || {},
+    historico: [
+      ...(p.historico || []),
+      { data: new Date().toISOString(), acao: 'Transferido para Vendas', detalhes: 'Pedido do card Comercial transferido para Orçamentos em Análise' },
+    ],
+    status: 'analise',
+    data: dataStr,
+    validade: '',
+    linkDrive: '',
+    origemPedidoId: p.id,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+}
 
 /* ── Header ──────────────────────────────── */
 const ACTIVE = "vendas";
@@ -377,8 +468,17 @@ function useCollection(name) {
 /* ── FORM: Novo / Editar Orçamento ───────── */
 function OrcamentoForm({data, onClose}) {
   const isEdit = !!(data && data.id);
-  const empty = {cliente:'', descricao:'', valor:'', data:todayBR(), validade:'', status:'analise', linkDrive:'', observacao:''};
-  const [form, setForm] = useState(data ? {...empty,...data, valor: String(data.valor||'')} : empty);
+  const empty = {
+    cliente:'', descricao:'', numero:'', quantidade:'', valorUnit:'', valor:'',
+    custo:'', frete:'', despesas:'', prazo:'', responsavel:'', prioridade:'media',
+    data:todayBR(), validade:'', status:'analise', linkDrive:'', observacoes:'',
+  };
+  const [form, setForm] = useState(data ? {
+    ...empty, ...data,
+    valor: String(data.valor ?? ''),
+    // compatibilidade com orçamentos antigos, que guardavam a nota em "observacao"
+    observacoes: data.observacoes ?? data.observacao ?? '',
+  } : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
@@ -391,12 +491,21 @@ function OrcamentoForm({data, onClose}) {
       const d = {
         cliente: form.cliente.trim(),
         descricao: (form.descricao||'').trim(),
+        numero: (form.numero||'').trim(),
+        quantidade: form.quantidade === '' ? '' : Number(form.quantidade) || 0,
+        valorUnit: form.valorUnit === '' ? '' : Number(form.valorUnit) || 0,
         valor: Number(form.valor) || 0,
+        custo: form.custo === '' ? '' : Number(form.custo) || 0,
+        frete: form.frete === '' ? '' : Number(form.frete) || 0,
+        despesas: form.despesas === '' ? '' : Number(form.despesas) || 0,
+        prazo: (form.prazo||'').trim(),
+        responsavel: (form.responsavel||'').trim(),
+        prioridade: form.prioridade || 'media',
         data: (form.data||'').trim(),
         validade: (form.validade||'').trim(),
         status: form.status || 'analise',
         linkDrive: (form.linkDrive||'').trim(),
-        observacao: (form.observacao||'').trim(),
+        observacoes: (form.observacoes||'').trim(),
       };
       if (isEdit) await db.collection('orcamentos').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('orcamentos').add(d); }
@@ -415,9 +524,40 @@ function OrcamentoForm({data, onClose}) {
     <Dialog title={isEdit ? 'Editar Orçamento' : 'Novo Orçamento'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
         <div className="f"><label>Cliente / Órgão *</label><input className="inp" value={form.cliente} onChange={e=>set('cliente',e.target.value)} placeholder="Ex: Prefeitura de Manaus — Seduc"/></div>
-        <div className="f"><label>Descrição</label><input className="inp" value={form.descricao} onChange={e=>set('descricao',e.target.value)} placeholder="Ex: Material gráfico — pregão 014/2026"/></div>
         <div className="row2">
-          <div className="f"><label>Valor (R$) *</label><input className="inp" type="number" step="0.01" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="1240.00"/></div>
+          <div className="f"><label>Nº do processo ou licitação</label><input className="inp" value={form.numero} onChange={e=>set('numero',e.target.value)} placeholder="014/2026"/></div>
+          <div className="f"><label>Descrição</label><input className="inp" value={form.descricao} onChange={e=>set('descricao',e.target.value)} placeholder="Ex: Material gráfico"/></div>
+        </div>
+
+        <div className="fgroup-lab">Valores</div>
+        <div className="row2">
+          <div className="f"><label>Quantidade</label><input className="inp" type="number" value={form.quantidade} onChange={e=>set('quantidade',e.target.value)} placeholder="100"/></div>
+          <div className="f"><label>Valor do produto (R$)</label><input className="inp" type="number" step="0.01" value={form.valorUnit} onChange={e=>set('valorUnit',e.target.value)} placeholder="12.00"/></div>
+        </div>
+        <div className="row2">
+          <div className="f"><label>Valor do orçamento (R$) *</label><input className="inp" type="number" step="0.01" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="1240.00"/></div>
+          <div className="f"><label>Custo de produção (R$)</label><input className="inp" type="number" step="0.01" value={form.custo} onChange={e=>set('custo',e.target.value)} placeholder="620.00"/></div>
+        </div>
+        <div className="row2">
+          <div className="f"><label>Frete (R$)</label><input className="inp" type="number" step="0.01" value={form.frete} onChange={e=>set('frete',e.target.value)} placeholder="0.00"/></div>
+          <div className="f"><label>Outras despesas (R$)</label><input className="inp" type="number" step="0.01" value={form.despesas} onChange={e=>set('despesas',e.target.value)} placeholder="0.00"/></div>
+        </div>
+
+        <div className="fgroup-lab">Prazo e responsável</div>
+        <div className="row2">
+          <div className="f"><label>Prazo de entrega</label><input className="inp" type="date" value={form.prazo} onChange={e=>set('prazo',e.target.value)}/></div>
+          <div className="f"><label>Responsável / fornecedor</label><input className="inp" value={form.responsavel} onChange={e=>set('responsavel',e.target.value)} placeholder="Nome"/></div>
+        </div>
+        <div className="row2">
+          <div className="f">
+            <label>Prioridade</label>
+            <select className="inp" value={form.prioridade} onChange={e=>set('prioridade',e.target.value)}>
+              <option value="urgente">Urgente</option>
+              <option value="alta">Alta</option>
+              <option value="media">Média</option>
+              <option value="baixa">Baixa</option>
+            </select>
+          </div>
           <div className="f">
             <label>Status</label>
             <select className="inp" value={form.status} onChange={e=>set('status',e.target.value)}>
@@ -427,6 +567,8 @@ function OrcamentoForm({data, onClose}) {
             </select>
           </div>
         </div>
+
+        <div className="fgroup-lab">Vendas</div>
         <div className="row2">
           <div className="f"><label>Data do orçamento</label><input className="inp" value={form.data} onChange={e=>set('data',e.target.value)} placeholder="dd/mm/aaaa"/></div>
           <div className="f"><label>Validade</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="dd/mm/aaaa"/></div>
@@ -439,7 +581,7 @@ function OrcamentoForm({data, onClose}) {
           </div>
           <p className="hint">{form.linkDrive && !isValidUrl(form.linkDrive) ? 'Cole o link completo, começando com https://' : 'Só o link é guardado, nenhum arquivo entra no sistema.'}</p>
         </div>
-        <div className="f"><label>Observação</label><input className="inp" value={form.observacao} onChange={e=>set('observacao',e.target.value)} placeholder="Notas adicionais"/></div>
+        <div className="f"><label>Observações</label><textarea className="inp" value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Notas adicionais"/></div>
       </div>
     </Dialog>
   );
@@ -448,9 +590,47 @@ function OrcamentoForm({data, onClose}) {
 /* ── APP ─────────────────────────────────── */
 function App() {
   const {items, loading} = useCollection('orcamentos');
+  const {items: pedidosItems} = useCollection('pedidos');
+  const stagesDoc = useDocData('config', 'stages');
   const [filtro, setFiltro] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+
+  const [impOpen, setImpOpen] = useState(false);
+  const [impList, setImpList] = useState([]);
+  const [impRunning, setImpRunning] = useState(false);
+  const [impResults, setImpResults] = useState(null);
+
+  const stagesList = (stagesDoc && Array.isArray(stagesDoc.list) && stagesDoc.list.length) ? stagesDoc.list : PEDIDOS_DEFAULT_STAGES;
+  const comercialIds = stagesList.filter(s => stageGroup(s.id, stagesList) === 'comercial').map(s => s.id);
+  const comercialPedidos = pedidosItems.filter(p => comercialIds.includes(p.status));
+
+  function openImport() {
+    setImpList(comercialPedidos);
+    setImpResults(null);
+    setImpOpen(true);
+  }
+  function closeImport() {
+    setImpOpen(false);
+    setImpResults(null);
+    setImpList([]);
+  }
+  async function runImport() {
+    setImpRunning(true);
+    const results = [];
+    for (const p of impList) {
+      try {
+        await db.collection('orcamentos').add(buildOrcamentoFromPedido(p));
+        await db.collection('pedidos').doc(p.id).delete();
+        results.push({ id: p.id, cliente: p.cliente, ok: true });
+      } catch (e) {
+        console.error(e);
+        results.push({ id: p.id, cliente: p.cliente, ok: false, err: (e && e.message) || 'erro desconhecido' });
+      }
+    }
+    setImpResults(results);
+    setImpRunning(false);
+  }
 
   const porStatus = (s) => items.filter(o => o.status === s);
   const totalDe = (arr) => arr.reduce((s,o) => s + Number(o.valor||0), 0);
@@ -468,11 +648,73 @@ function App() {
         <a href={PAINEL_URL} className="back"><Icon name="back"/> Voltar ao Painel</a>
         <div className="page-h">
           <div><h1>Vendas</h1><p>Orçamentos enviados a clientes e órgãos públicos.</p></div>
-          <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Novo Orçamento</button>
+          <div className="hbtns">
+            {comercialPedidos.length > 0 && (
+              <button className="btn accent" onClick={openImport}>
+                <Icon name="upload"/> Importar do Pedidos<span className="badge-new">{comercialPedidos.length}</span>
+              </button>
+            )}
+            <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Novo Orçamento</button>
+          </div>
         </div>
 
         {loading ? <div className="loading">Carregando…</div> : (
           <>
+            {impOpen && (
+              <div className="panel">
+                <div className="panel-h">
+                  <div className="chip"><Icon name="upload"/></div>
+                  <div>
+                    <h2>Importar pedidos do card "Comercial"</h2>
+                    <p>{impResults ? 'Resultado da transferência' : (impList.length + (impList.length===1 ? ' pedido será copiado' : ' pedidos serão copiados') + ' para "Orçamentos em Análise" com todos os campos preservados')}</p>
+                  </div>
+                </div>
+                {!impResults ? (
+                  <>
+                    <div className="panel-b">
+                      {impList.length === 0 ? <div className="empty">Nenhum pedido no card Comercial.</div> : impList.map(p => (
+                        <div className="improw" key={p.id}>
+                          <div>
+                            <div className="nome">{p.cliente || '(sem cliente)'}</div>
+                            <div className="meta">{p.numero ? ('Nº ' + p.numero + ' · ') : ''}{p.descricao || '—'}</div>
+                          </div>
+                          <div className="valor">{fmtBRL(p.valor)}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {impList.length > 0 && (
+                      <div className="hint-box">
+                        <Icon name="alert"/>
+                        <span>Cada pedido só é apagado do Pedidos depois que a cópia em Vendas é salva com sucesso. Se algum falhar, ele continua em Pedidos e aparece no resultado como "não transferido".</span>
+                      </div>
+                    )}
+                    <div className="panel-f">
+                      <div className="tot">{impList.length} pedido{impList.length===1?'':'s'} · <b>{fmtBRL(impList.reduce((s,p)=>s+Number(p.valor||0),0))}</b> no total</div>
+                      <div className="acts">
+                        <button className="btn" onClick={closeImport} disabled={impRunning}>Cancelar</button>
+                        {impList.length > 0 && <button className="btn accent" onClick={runImport} disabled={impRunning}>{impRunning ? 'Transferindo…' : 'Confirmar transferência'}</button>}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="panel-b">
+                      {impResults.map(r => (
+                        <div className="improw" key={r.id}>
+                          <div className="nome">{r.cliente || '(sem cliente)'}</div>
+                          <div className="valor" style={{color: r.ok ? 'var(--ok)' : 'var(--alert)'}}>{r.ok ? '✓ Transferido' : ('✗ Falhou: ' + r.err)}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="panel-f">
+                      <div className="tot">{impResults.filter(r=>r.ok).length} de {impResults.length} transferidos com sucesso</div>
+                      <div className="acts"><button className="btn primary" onClick={closeImport}>Fechar</button></div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="vgrid">
               {['aprovado','analise','nao_aprovado'].map(s => {
                 const arr = porStatus(s);
