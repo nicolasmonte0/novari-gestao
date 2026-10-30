@@ -168,6 +168,12 @@ textarea.inp{height:70px;resize:vertical;font-family:inherit}
 .items-total{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--col);border-radius:8px;font-size:13px}
 .items-total b{font-size:15.5px}
 @media (max-width:620px){ .item-grid{grid-template-columns:1fr 1fr;row-gap:10px} .item-grid .item-sub{grid-column:1/2} .item-grid .item-rm{grid-column:2/3;justify-self:end} }
+
+/* custos adicionais */
+.cost-row{display:grid;grid-template-columns:1fr 140px 34px;gap:8px}
+.price-total{background:var(--ok-bg);color:var(--ok)}
+.price-total b{font-size:17px;color:var(--ok)}
+@media (max-width:560px){ .cost-row{grid-template-columns:1fr 1fr;row-gap:8px} .cost-row .item-rm{grid-column:2/3;justify-self:end} }
 .err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
 .nf-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none}
 .nf-link:hover{text-decoration:underline}
@@ -483,12 +489,16 @@ function useCollection(name) {
 function newItemRow() {
   return { id: 'it' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), descricao: '', quantidade: '', valorUnit: '' };
 }
+function newCostRow(nome) {
+  return { id: 'ct' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nome: nome || '', valor: '' };
+}
 function OrcamentoForm({data, onClose}) {
   const isEdit = !!(data && data.id);
   const {items: contatosItems} = useCollection('contatos');
   const empty = {
     cliente:'', descricao:'', numero:'', itens:[newItemRow()],
-    custo:'', frete:'', despesas:'', prazo:'', responsavel:'', prioridade:'media',
+    custos:[newCostRow('Imposto'), newCostRow('Taxa de Administração'), newCostRow('Lucro'), newCostRow('Frete')],
+    prazo:'', responsavel:'', prioridade:'media',
     data:todayBR(), validade:'', status:'analise', linkDrive:'', observacoes:'',
   };
   const [form, setForm] = useState(data ? {
@@ -501,6 +511,17 @@ function OrcamentoForm({data, onClose}) {
       quantidade: (it.quantidade === 0 || it.quantidade) ? it.quantidade : '',
       valorUnit: (it.valorUnit === 0 || it.valorUnit) ? it.valorUnit : '',
     })) : [{ ...newItemRow(), quantidade: (data.quantidade === 0 || data.quantidade) ? data.quantidade : '', valorUnit: (data.valorUnit === 0 || data.valorUnit) ? data.valorUnit : '' }],
+    // orçamentos antigos guardavam custo/frete/despesas como campos fixos;
+    // viram linhas de "Custos adicionais" automaticamente, sem perder nada.
+    custos: (Array.isArray(data.custos) && data.custos.length) ? data.custos.map(c => ({
+      id: 'ct' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      nome: c.nome || '',
+      valor: (c.valor === 0 || c.valor) ? c.valor : '',
+    })) : [
+      ...(data.custo ? [{ ...newCostRow('Custo de produção'), valor: data.custo }] : []),
+      ...(data.despesas ? [{ ...newCostRow('Outras despesas'), valor: data.despesas }] : []),
+      ...(data.frete ? [{ ...newCostRow('Frete'), valor: data.frete }] : []),
+    ],
     // compatibilidade com orçamentos antigos, que guardavam a nota em "observacao"
     observacoes: data.observacoes ?? data.observacao ?? '',
   } : empty);
@@ -510,8 +531,13 @@ function OrcamentoForm({data, onClose}) {
   const setItem = (id,k,v) => setForm(f => ({...f, itens: f.itens.map(it => it.id===id ? {...it,[k]:v} : it)}));
   const addItem = () => setForm(f => ({...f, itens: [...f.itens, newItemRow()]}));
   const removeItem = (id) => setForm(f => ({...f, itens: f.itens.length>1 ? f.itens.filter(it=>it.id!==id) : f.itens}));
+  const setCost = (id,k,v) => setForm(f => ({...f, custos: f.custos.map(c => c.id===id ? {...c,[k]:v} : c)}));
+  const addCost = () => setForm(f => ({...f, custos: [...f.custos, newCostRow('')]}));
+  const removeCost = (id) => setForm(f => ({...f, custos: f.custos.filter(c=>c.id!==id)}));
 
   const itensTotal = form.itens.reduce((s,it) => s + (Number(it.quantidade)||0)*(Number(it.valorUnit)||0), 0);
+  const custosTotal = form.custos.reduce((s,c) => s + (Number(c.valor)||0), 0);
+  const precoVenda = itensTotal + custosTotal;
 
   async function save() {
     if (!form.cliente.trim()) {setErr('Informe o cliente ou órgão.'); return;}
@@ -527,10 +553,11 @@ function OrcamentoForm({data, onClose}) {
           quantidade: Number(it.quantidade) || 0,
           valorUnit: Number(it.valorUnit) || 0,
         })),
-        valor: itensTotal,
-        custo: form.custo === '' ? '' : Number(form.custo) || 0,
-        frete: form.frete === '' ? '' : Number(form.frete) || 0,
-        despesas: form.despesas === '' ? '' : Number(form.despesas) || 0,
+        custos: form.custos.map(c => ({
+          nome: (c.nome||'').trim(),
+          valor: Number(c.valor) || 0,
+        })),
+        valor: precoVenda,
         prazo: (form.prazo||'').trim(),
         responsavel: (form.responsavel||'').trim(),
         prioridade: form.prioridade || 'media',
@@ -541,9 +568,13 @@ function OrcamentoForm({data, onClose}) {
         observacoes: (form.observacoes||'').trim(),
       };
       if (isEdit) {
-        // limpa os campos antigos de produto único, já substituídos por "itens"
+        // limpa os campos antigos (produto único e custo/frete/despesas fixos),
+        // já substituídos por "itens" e "custos"
         d.quantidade = firebase.firestore.FieldValue.delete();
         d.valorUnit = firebase.firestore.FieldValue.delete();
+        d.custo = firebase.firestore.FieldValue.delete();
+        d.frete = firebase.firestore.FieldValue.delete();
+        d.despesas = firebase.firestore.FieldValue.delete();
         await db.collection('orcamentos').doc(data.id).update(d);
       } else {
         d.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
@@ -596,11 +627,22 @@ function OrcamentoForm({data, onClose}) {
         </div>
 
         <div className="fgroup-lab">Custos adicionais</div>
-        <div className="row2">
-          <div className="f"><label>Custo de produção (R$)</label><input className="inp" type="number" step="0.01" value={form.custo} onChange={e=>set('custo',e.target.value)} placeholder="0.00"/></div>
-          <div className="f"><label>Frete (R$)</label><input className="inp" type="number" step="0.01" value={form.frete} onChange={e=>set('frete',e.target.value)} placeholder="0.00"/></div>
+        <div className="items">
+          {form.custos.map(c => (
+            <div className="cost-row" key={c.id}>
+              <input className="inp cost-nome" value={c.nome} onChange={e=>setCost(c.id,'nome',e.target.value)} placeholder="Nome do custo"/>
+              <input className="inp cost-val" type="number" step="0.01" value={c.valor} onChange={e=>setCost(c.id,'valor',e.target.value)} placeholder="0.00"/>
+              <button type="button" className="item-rm" title="Remover custo" onClick={()=>removeCost(c.id)}>
+                <Icon name="trash" style={{width:14,height:14}}/>
+              </button>
+            </div>
+          ))}
+          <button type="button" className="item-add" onClick={addCost}><Icon name="plus" style={{width:14,height:14}}/> Adicionar custo</button>
+          <div className="items-total"><span>Total de custos adicionais</span><b>{fmtBRL(custosTotal)}</b></div>
         </div>
-        <div className="f"><label>Outras despesas (R$)</label><input className="inp" type="number" step="0.01" value={form.despesas} onChange={e=>set('despesas',e.target.value)} placeholder="0.00"/></div>
+
+        <div className="fgroup-lab">Preço de venda</div>
+        <div className="items-total price-total"><span>Itens + custos adicionais</span><b>{fmtBRL(precoVenda)}</b></div>
 
         <div className="fgroup-lab">Prazo e responsável</div>
         <div className="row2">
