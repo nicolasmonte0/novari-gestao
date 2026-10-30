@@ -154,6 +154,20 @@ button,input,select,textarea{font-family:inherit}
 select.inp{appearance:auto}
 textarea.inp{height:70px;resize:vertical;font-family:inherit}
 .fgroup-lab{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:2px 0 -4px}
+
+/* Itens do orçamento */
+.items{display:flex;flex-direction:column;gap:8px}
+.item-row{background:var(--col);border:1px solid var(--line);border-radius:9px;padding:10px 12px 12px}
+.item-num{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.item-grid{display:grid;grid-template-columns:1fr 70px 110px 100px 34px;gap:8px;align-items:end}
+.item-grid .f label{font-size:11px;margin-bottom:4px}
+.item-sub{height:38px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.item-rm{width:34px;height:38px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--alert);cursor:pointer}
+.item-rm:disabled{opacity:.35;cursor:default}
+.item-add{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--accent);background:#EAF3FB;border:1px dashed var(--accent);border-radius:7px;padding:7px 12px;cursor:pointer}
+.items-total{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--col);border-radius:8px;font-size:13px}
+.items-total b{font-size:15.5px}
+@media (max-width:620px){ .item-grid{grid-template-columns:1fr 1fr;row-gap:10px} .item-grid .item-sub{grid-column:1/2} .item-grid .item-rm{grid-column:2/3;justify-self:end} }
 .err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
 .nf-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none}
 .nf-link:hover{text-decoration:underline}
@@ -466,35 +480,54 @@ function useCollection(name) {
 }
 
 /* ── FORM: Novo / Editar Orçamento ───────── */
+function newItemRow() {
+  return { id: 'it' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), descricao: '', quantidade: '', valorUnit: '' };
+}
 function OrcamentoForm({data, onClose}) {
   const isEdit = !!(data && data.id);
+  const {items: contatosItems} = useCollection('contatos');
   const empty = {
-    cliente:'', descricao:'', numero:'', quantidade:'', valorUnit:'', valor:'',
+    cliente:'', descricao:'', numero:'', itens:[newItemRow()],
     custo:'', frete:'', despesas:'', prazo:'', responsavel:'', prioridade:'media',
     data:todayBR(), validade:'', status:'analise', linkDrive:'', observacoes:'',
   };
   const [form, setForm] = useState(data ? {
     ...empty, ...data,
-    valor: String(data.valor ?? ''),
+    // orçamentos antigos guardavam um único produto nos campos quantidade/valorUnit;
+    // viram o Item 1 automaticamente, sem perder nada.
+    itens: (Array.isArray(data.itens) && data.itens.length) ? data.itens.map(it => ({
+      id: 'it' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      descricao: it.descricao || '',
+      quantidade: (it.quantidade === 0 || it.quantidade) ? it.quantidade : '',
+      valorUnit: (it.valorUnit === 0 || it.valorUnit) ? it.valorUnit : '',
+    })) : [{ ...newItemRow(), quantidade: (data.quantidade === 0 || data.quantidade) ? data.quantidade : '', valorUnit: (data.valorUnit === 0 || data.valorUnit) ? data.valorUnit : '' }],
     // compatibilidade com orçamentos antigos, que guardavam a nota em "observacao"
     observacoes: data.observacoes ?? data.observacao ?? '',
   } : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const setItem = (id,k,v) => setForm(f => ({...f, itens: f.itens.map(it => it.id===id ? {...it,[k]:v} : it)}));
+  const addItem = () => setForm(f => ({...f, itens: [...f.itens, newItemRow()]}));
+  const removeItem = (id) => setForm(f => ({...f, itens: f.itens.length>1 ? f.itens.filter(it=>it.id!==id) : f.itens}));
+
+  const itensTotal = form.itens.reduce((s,it) => s + (Number(it.quantidade)||0)*(Number(it.valorUnit)||0), 0);
 
   async function save() {
     if (!form.cliente.trim()) {setErr('Informe o cliente ou órgão.'); return;}
-    if (!form.valor || Number(form.valor) <= 0) {setErr('Informe o valor.'); return;}
+    if (itensTotal <= 0) {setErr('Adicione ao menos um item com quantidade e valor.'); return;}
     setErr(''); setSaving(true);
     try {
       const d = {
         cliente: form.cliente.trim(),
         descricao: (form.descricao||'').trim(),
         numero: (form.numero||'').trim(),
-        quantidade: form.quantidade === '' ? '' : Number(form.quantidade) || 0,
-        valorUnit: form.valorUnit === '' ? '' : Number(form.valorUnit) || 0,
-        valor: Number(form.valor) || 0,
+        itens: form.itens.map(it => ({
+          descricao: (it.descricao||'').trim(),
+          quantidade: Number(it.quantidade) || 0,
+          valorUnit: Number(it.valorUnit) || 0,
+        })),
+        valor: itensTotal,
         custo: form.custo === '' ? '' : Number(form.custo) || 0,
         frete: form.frete === '' ? '' : Number(form.frete) || 0,
         despesas: form.despesas === '' ? '' : Number(form.despesas) || 0,
@@ -507,8 +540,15 @@ function OrcamentoForm({data, onClose}) {
         linkDrive: (form.linkDrive||'').trim(),
         observacoes: (form.observacoes||'').trim(),
       };
-      if (isEdit) await db.collection('orcamentos').doc(data.id).update(d);
-      else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('orcamentos').add(d); }
+      if (isEdit) {
+        // limpa os campos antigos de produto único, já substituídos por "itens"
+        d.quantidade = firebase.firestore.FieldValue.delete();
+        d.valorUnit = firebase.firestore.FieldValue.delete();
+        await db.collection('orcamentos').doc(data.id).update(d);
+      } else {
+        d.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('orcamentos').add(d);
+      }
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
   }
@@ -523,25 +563,44 @@ function OrcamentoForm({data, onClose}) {
   return (
     <Dialog title={isEdit ? 'Editar Orçamento' : 'Novo Orçamento'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
-        <div className="f"><label>Cliente / Órgão *</label><input className="inp" value={form.cliente} onChange={e=>set('cliente',e.target.value)} placeholder="Ex: Prefeitura de Manaus — Seduc"/></div>
+        <div className="f">
+          <label>Cliente / Órgão *</label>
+          <input className="inp" list="clientes-dl" value={form.cliente} onChange={e=>set('cliente',e.target.value)} placeholder="Ex: Prefeitura de Manaus — Seduc"/>
+          <datalist id="clientes-dl">
+            {contatosItems.map(c => <option key={c.id} value={c.nome} />)}
+          </datalist>
+        </div>
         <div className="row2">
           <div className="f"><label>Nº do processo ou licitação</label><input className="inp" value={form.numero} onChange={e=>set('numero',e.target.value)} placeholder="014/2026"/></div>
-          <div className="f"><label>Descrição</label><input className="inp" value={form.descricao} onChange={e=>set('descricao',e.target.value)} placeholder="Ex: Material gráfico"/></div>
+          <div className="f"><label>Descrição geral</label><input className="inp" value={form.descricao} onChange={e=>set('descricao',e.target.value)} placeholder="Ex: Material gráfico — pregão 014/2026"/></div>
         </div>
 
-        <div className="fgroup-lab">Valores</div>
-        <div className="row2">
-          <div className="f"><label>Quantidade</label><input className="inp" type="number" value={form.quantidade} onChange={e=>set('quantidade',e.target.value)} placeholder="100"/></div>
-          <div className="f"><label>Valor do produto (R$)</label><input className="inp" type="number" step="0.01" value={form.valorUnit} onChange={e=>set('valorUnit',e.target.value)} placeholder="12.00"/></div>
+        <div className="fgroup-lab">Itens do orçamento</div>
+        <div className="items">
+          {form.itens.map((it,i) => (
+            <div className="item-row" key={it.id}>
+              <div className="item-num">Item {i+1}</div>
+              <div className="item-grid">
+                <div className="f"><label>Descrição do item</label><input className="inp" value={it.descricao} onChange={e=>setItem(it.id,'descricao',e.target.value)} placeholder="Ex: Banner lona 2x1m"/></div>
+                <div className="f"><label>Qtd.</label><input className="inp" type="number" value={it.quantidade} onChange={e=>setItem(it.id,'quantidade',e.target.value)} placeholder="1"/></div>
+                <div className="f"><label>Valor unit. (R$)</label><input className="inp" type="number" step="0.01" value={it.valorUnit} onChange={e=>setItem(it.id,'valorUnit',e.target.value)} placeholder="0.00"/></div>
+                <div className="item-sub">{fmtBRL((Number(it.quantidade)||0)*(Number(it.valorUnit)||0))}</div>
+                <button type="button" className="item-rm" title="Remover item" disabled={form.itens.length<=1} onClick={()=>removeItem(it.id)}>
+                  <Icon name="trash" style={{width:14,height:14}}/>
+                </button>
+              </div>
+            </div>
+          ))}
+          <button type="button" className="item-add" onClick={addItem}><Icon name="plus" style={{width:14,height:14}}/> Adicionar item</button>
+          <div className="items-total"><span>Total dos itens ({form.itens.length})</span><b>{fmtBRL(itensTotal)}</b></div>
         </div>
+
+        <div className="fgroup-lab">Custos adicionais</div>
         <div className="row2">
-          <div className="f"><label>Valor do orçamento (R$) *</label><input className="inp" type="number" step="0.01" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="1240.00"/></div>
-          <div className="f"><label>Custo de produção (R$)</label><input className="inp" type="number" step="0.01" value={form.custo} onChange={e=>set('custo',e.target.value)} placeholder="620.00"/></div>
-        </div>
-        <div className="row2">
+          <div className="f"><label>Custo de produção (R$)</label><input className="inp" type="number" step="0.01" value={form.custo} onChange={e=>set('custo',e.target.value)} placeholder="0.00"/></div>
           <div className="f"><label>Frete (R$)</label><input className="inp" type="number" step="0.01" value={form.frete} onChange={e=>set('frete',e.target.value)} placeholder="0.00"/></div>
-          <div className="f"><label>Outras despesas (R$)</label><input className="inp" type="number" step="0.01" value={form.despesas} onChange={e=>set('despesas',e.target.value)} placeholder="0.00"/></div>
         </div>
+        <div className="f"><label>Outras despesas (R$)</label><input className="inp" type="number" step="0.01" value={form.despesas} onChange={e=>set('despesas',e.target.value)} placeholder="0.00"/></div>
 
         <div className="fgroup-lab">Prazo e responsável</div>
         <div className="row2">
