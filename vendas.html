@@ -71,6 +71,9 @@ button,input,select,textarea{font-family:inherit}
 .btn.danger:hover{background:var(--alert-bg)}
 .btn.sm{height:30px;font-size:12px;padding:0 10px}
 .btn[disabled]{opacity:.5;cursor:default}
+.vinc{margin:5px 0 0;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.vinc.ok{color:var(--ok);font-weight:600}
+.numi{display:inline-block;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700;color:var(--ink-2)}
 .badge-new{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:2px;font-size:10.5px;font-weight:700;color:#fff;background:rgba(255,255,255,.28);border-radius:20px}
 
 /* Painel de importação */
@@ -501,6 +504,9 @@ function OrcamentoForm({data, onClose}) {
   const addCost = () => setForm(f => ({...f, custos: [...f.custos, newCostRow('')]}));
   const removeCost = (id) => setForm(f => ({...f, custos: f.custos.filter(c=>c.id!==id)}));
 
+  const nomeKey = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const clienteCadastro = form.cliente.trim() ? contatosItems.find(c => nomeKey(c.nome) === nomeKey(form.cliente)) : null;
+
   const itensTotal = form.itens.reduce((s,it) => s + (Number(it.quantidade)||0)*(Number(it.valorUnit)||0), 0);
   const custosTotal = form.custos.reduce((s,c) => s + (Number(c.valor)||0), 0);
   const precoVenda = itensTotal + custosTotal;
@@ -533,6 +539,8 @@ function OrcamentoForm({data, onClose}) {
         linkDrive: (form.linkDrive||'').trim(),
         observacoes: (form.observacoes||'').trim(),
       };
+      // vínculo com o cadastro de Clientes (o nome digitado continua sendo guardado como está)
+      if (clienteCadastro) d.clienteId = clienteCadastro.id;
       if (isEdit) {
         // limpa os campos antigos (produto único e custo/frete/despesas fixos),
         // já substituídos por "itens" e "custos"
@@ -541,10 +549,25 @@ function OrcamentoForm({data, onClose}) {
         d.custo = firebase.firestore.FieldValue.delete();
         d.frete = firebase.firestore.FieldValue.delete();
         d.despesas = firebase.firestore.FieldValue.delete();
+        if (!clienteCadastro) d.clienteId = firebase.firestore.FieldValue.delete();
         await db.collection('orcamentos').doc(data.id).update(d);
       } else {
         d.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection('orcamentos').add(d);
+        // Número interno sequencial por ano (ORC-2026-001): o contador e o orçamento são gravados juntos,
+        // numa transação, para dois orçamentos nunca receberem o mesmo número.
+        const ano = new Date().getFullYear();
+        const campo = 'orcamentos_' + ano;
+        const contRef = db.collection('config').doc('contadores');
+        const novoRef = db.collection('orcamentos').doc();
+        const quem = (firebase.auth().currentUser || {}).email || '';
+        await db.runTransaction(async tx => {
+          const snap = await tx.get(contRef);
+          const atual = (snap.exists && Number(snap.data()[campo])) || 0;
+          const n = atual + 1;
+          tx.set(contRef, {[campo]: n}, {merge: true});
+          tx.set(novoRef, {...d, numeroInterno: 'ORC-' + ano + '-' + String(n).padStart(3, '0'),
+            criadoPor: quem, alteradoPor: quem, alteradoEm: firebase.firestore.FieldValue.serverTimestamp()});
+        });
       }
       onClose();
     } catch(e) { console.error(e); setErr('Erro ao salvar.'); } finally { setSaving(false); }
@@ -560,12 +583,16 @@ function OrcamentoForm({data, onClose}) {
   return (
     <Dialog title={isEdit ? 'Editar Orçamento' : 'Novo Orçamento'} onClose={onClose} onSave={save} onDelete={isEdit ? remove : null} saving={saving} err={err}>
       <div className="form">
+        {isEdit && data.numeroInterno && <p className="vinc" style={{margin:0}}>Nº interno: <span className="numi">{data.numeroInterno}</span></p>}
         <div className="f">
           <label>Cliente / Órgão *</label>
           <input className="inp" list="clientes-dl" value={form.cliente} onChange={e=>set('cliente',e.target.value)} placeholder="Ex: Prefeitura de Manaus — Seduc"/>
           <datalist id="clientes-dl">
             {contatosItems.map(c => <option key={c.id} value={c.nome} />)}
           </datalist>
+          {form.cliente.trim() && (clienteCadastro
+            ? <p className="vinc ok"><Icon name="check" style={{width:13,height:13}}/> Vinculado ao cadastro de Clientes</p>
+            : <p className="vinc">Cliente fora do cadastro: será salvo só com o nome. Cadastre em Clientes para vincular.</p>)}
         </div>
         <div className="row2">
           <div className="f"><label>Nº do processo ou licitação</label><input className="inp" value={form.numero} onChange={e=>set('numero',e.target.value)} placeholder="014/2026"/></div>
@@ -710,10 +737,11 @@ function App() {
               {visiveis.length === 0 ? <div className="empty">Nenhum orçamento encontrado.</div> : (
                 <div className="tbl-wrap">
                   <table className="tbl">
-                    <thead><tr><th>Cliente / Órgão</th><th>Valor</th><th>Data</th><th>Validade</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>Nº</th><th>Cliente / Órgão</th><th>Valor</th><th>Data</th><th>Validade</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                       {visiveis.map(o => (
                         <tr key={o.id}>
+                          <td>{o.numeroInterno ? <span className="numi">{o.numeroInterno}</span> : <span style={{color:'var(--muted)'}}>—</span>}</td>
                           <td>
                             <div style={{fontWeight:600}}>{o.cliente}</div>
                             {o.descricao && <div style={{color:'var(--muted)', fontSize:12.5}}>{o.descricao}</div>}
