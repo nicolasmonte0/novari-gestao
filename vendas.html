@@ -165,7 +165,7 @@ textarea.inp{height:70px;resize:vertical;font-family:inherit}
 .items{display:flex;flex-direction:column;gap:8px}
 .item-row{background:var(--col);border:1px solid var(--line);border-radius:9px;padding:10px 12px 12px}
 .item-num{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
-.item-grid{display:grid;grid-template-columns:2.2fr 56px 96px 86px 32px;gap:8px;align-items:end}
+.item-grid{display:grid;grid-template-columns:2.2fr 62px 56px 96px 86px 32px;gap:8px;align-items:end}
 .item-grid .f label{font-size:11px;margin-bottom:4px}
 .item-sub{height:38px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap}
 .item-rm{width:34px;height:38px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--alert);cursor:pointer}
@@ -273,6 +273,7 @@ body{padding-left:238px}
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
 </svg>
 
@@ -415,6 +416,215 @@ function montarPedidoDoOrcamento(o, id, status) {
   };
 }
 
+/* ── PDF do orçamento (proposta para o cliente) ───────── */
+/* Os custos internos (imposto, taxa, lucro, frete...) NÃO aparecem para o cliente: eles são
+   distribuídos proporcionalmente nos preços dos itens, de modo que a soma bate com o valor total. */
+function escHtml(t) {
+  return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function itensParaCliente(o) {
+  const itens = (Array.isArray(o.itens) && o.itens.length) ? o.itens
+    : [{descricao: o.descricao || 'Item', quantidade: o.quantidade || 1, valorUnit: o.valorUnit || 0}];
+  const total = Number(o.valor) || 0;
+  const base = itens.reduce((a, it) => a + (Number(it.quantidade) || 0) * (Number(it.valorUnit) || 0), 0);
+  const fator = (base > 0 && total > 0) ? total / base : 1;
+  let acumulado = 0;
+  return itens.map((it, i) => {
+    const q = Number(it.quantidade) || 0;
+    const sub = (i === itens.length - 1 && total > 0)
+      ? Math.round((total - acumulado) * 100) / 100
+      : Math.round(q * (Number(it.valorUnit) || 0) * fator * 100) / 100;
+    acumulado += sub;
+    return {descricao: it.descricao || ('Item ' + (i + 1)), unidade: it.unidade || 'Und', especificacoes: it.especificacoes || '', quantidade: q, unit: q > 0 ? sub / q : 0, sub};
+  });
+}
+function dataExtenso(s) {
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  let d = null;
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+  if (m) d = new Date(+m[3], +m[2] - 1, +m[1]);
+  if (!d || isNaN(d)) d = new Date();
+  return String(d.getDate()).padStart(2, '0') + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+}
+function prazoTexto(o) {
+  if ((o.prazoEntrega || '').trim()) return o.prazoEntrega.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(o.prazo || '');
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+}
+function montarHtmlProposta(o, fundoUrl) {
+  const linhas = itensParaCliente(o);
+  const total = Number(o.valor) || linhas.reduce((a, l) => a + l.sub, 0);
+  const num = o.numeroInterno || '';
+  const cond = [
+    ['Validade da Proposta', o.validade],
+    ['Condições de Pagamento', o.condicoesPagamento],
+    ['Prazo de Entrega', prazoTexto(o)],
+    ['Garantia', o.garantia],
+    ['Local da Entrega', o.localEntrega],
+  ].filter(x => (x[1] || '').toString().trim());
+  const specs = (t) => {
+    const ls = String(t || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    return ls.length ? '<ul>' + ls.map(x => '<li>' + escHtml(x.replace(/^[-•*]\s*/, '')) + '</li>').join('') + '</ul>' : '';
+  };
+  return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Proposta ' + escHtml(num || 'comercial') + ' — Novari Print</title><style>'
+  // Papel timbrado da empresa (imagem A4) como fundo de todas as páginas. A margem da página é zero; o cabeçalho e o rodapé do
+  // timbrado são preservados por espaçadores (thead/tfoot) que o navegador repete em cada página impressa.
+  + '@page{size:A4;margin:0}*{box-sizing:border-box}'
+  + 'body{margin:0;font:10.5pt/1.35 Arial,"Liberation Sans",Helvetica,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+  + '.fundo{position:fixed;left:0;top:0;width:210mm;height:297mm;z-index:-1}'
+  + '.rod{position:fixed;right:11mm;bottom:31mm;font-size:8pt;color:#151F38;text-align:right;white-space:nowrap}'
+  + '.pg{width:100%;border-collapse:collapse}.pg>thead>tr>td>div{height:36mm}.pg>tfoot>tr>td>div{height:42mm}.pg>tbody>tr>td{padding:0 18mm;vertical-align:top;border:0}'
+  + 'h1{font-size:11pt;margin:0 0 14px}.cli{font-weight:bold;margin:0 0 10px;line-height:1.45}.intro{margin:0 0 12px}'
+  + 'table.it{width:100%;border-collapse:collapse;table-layout:fixed}.it th,.it td{border:1px solid #000;padding:4px 6px;vertical-align:top}'
+  + '.it th{text-align:center;font-weight:bold}.it thead{display:table-header-group}.it tr{page-break-inside:avoid}'
+  + '.it .c{text-align:center}.it .r{text-align:right;white-space:nowrap}.it ul{margin:4px 0 0;padding-left:16px}.it li{margin:0}'
+  + '.it .tot td{text-align:right;font-weight:bold;padding:7px 6px}'
+  + '.box{border:1px solid #000;padding:4px 6px;margin-top:16px;page-break-inside:avoid}.box p{margin:0}'
+  + '.data{margin:14px 0 0;text-align:right;padding-right:10mm;page-break-inside:avoid}'
+  + '.ass{margin-top:44px;page-break-inside:avoid;font-weight:bold}.ass .l{width:320px;border-top:1px solid #000;margin-bottom:6px}'
+  + '</style></head><body>'
+  + (fundoUrl ? '<img class="fundo" src="' + escHtml(fundoUrl) + '" alt=""><div class="rod"><b>NOVARI PRINT COM. DE PAPELARIA E SERV. GRÁFICOS LTDA</b> - CNPJ: 16.943.709/0001-60</div>' : '')
+  + '<table class="pg"><thead><tr><td><div></div></td></tr></thead><tfoot><tr><td><div></div></td></tr></tfoot><tbody><tr><td>'
+  + '<h1>PROPOSTA COMERCIAL</h1>'
+  + '<div class="cli">À<br>' + escHtml(o.cliente || '') + (o.numero ? '<br>Nº Processo de Compra: ' + escHtml(o.numero) : '') + '</div>'
+  + '<p class="intro">Prezado Cliente, obrigado pelo interesse em adquirir nossos produtos e serviços.<br>Segue, nossa Proposta Comercial, para sua avaliação e aprovação.</p>'
+  + '<table class="it"><colgroup><col style="width:9%"><col style="width:41%"><col style="width:9%"><col style="width:9%"><col style="width:16%"><col style="width:16%"></colgroup>'
+  + '<thead><tr><th rowspan="2">Itens</th><th rowspan="2" style="text-align:left">Especificações</th><th rowspan="2">Und.</th><th rowspan="2">Qde.</th><th colspan="2">Valor (R$)</th></tr><tr><th>Unit</th><th>Total</th></tr></thead><tbody>'
+  + linhas.map((l, i) => '<tr><td class="c">' + String(i + 1).padStart(2, '0') + '</td><td>' + escHtml(l.descricao) + specs(l.especificacoes) + '</td><td class="c">' + escHtml(l.unidade || 'Und') + '</td><td class="c">' + escHtml(l.quantidade) + '</td><td class="r">' + escHtml(fmtBRL(l.unit).replace('R$', '').trim()) + '</td><td class="r">' + escHtml(fmtBRL(l.sub).replace('R$', '').trim()) + '</td></tr>').join('')
+  + '<tr class="tot"><td colspan="6">VALOR TOTAL DA PROPOSTA: ' + escHtml(fmtBRL(total)) + '</td></tr></tbody></table>'
+  + (cond.length ? '<div class="box">' + cond.map(c => '<p><b>' + escHtml(c[0]) + ':</b> ' + escHtml(c[1]) + '</p>').join('') + '</div>' : '')
+  + '<div class="box"><p><b>DECLARAMOS QUE</b>: Nos valores constantes desta proposta estão compreendidos lucro, encargos sociais, taxas e seguros, fretes e quaisquer despesas de responsabilidade do proponente, que direta ou indiretamente, decorram da execução do objeto licitado, na forma prevista no Processo de compra e seus anexos., não cabendo a proponente qualquer reclamação posterior.</p>'
+  + '<p><b>GARANTIA:</b> Garantia contra eventuais defeitos e/ou vícios de fabricação de acordo com os artigos 12, 13 e 17 a 27, do Código de Defesa do Consumidor (Lei nº 8.078, de 1990), em relação a cada produto, material ou serviços.</p></div>'
+  + '<div class="data">Manaus/AM, ' + escHtml(dataExtenso(o.data)) + '.</div>'
+  + '<div class="ass"><div class="l"></div>NOVARI PRINT COM. DE PAPELARIA E SERV. GRÁFICOS LTDA<br>CNPJ: 16.943.709/0001-60</div>'
+  + '</td></tr></tbody></table></body></html>';
+}
+function imprimirProposta(o) {
+  const logo = new URL('timbrado-comercial.jpg', location.href).href;
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const w = f.contentWindow;
+  w.document.open(); w.document.write(montarHtmlProposta(o, logo)); w.document.close();
+  const limpar = () => setTimeout(() => { try { f.remove(); } catch (e) {} }, 1500);
+  const imprimir = () => { try { w.focus(); w.print(); } finally { limpar(); } };
+  const img = w.document.images[0];
+  if (img && !img.complete) { img.onload = imprimir; img.onerror = imprimir; } else { setTimeout(imprimir, 150); }
+}
+
+/* ── Proposta em Word (.docx editável) ─────────────────── */
+/* Mesmo conteúdo do PDF, mas num arquivo do Word para ajustes manuais. A biblioteca é carregada só quando se clica em "Word". */
+function carregarDocxLib() {
+  if (window.docx) return Promise.resolve(window.docx);
+  return new Promise((ok, falha) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/docx@8.5.0/build/index.umd.js';
+    s.onload = () => window.docx ? ok(window.docx) : falha(new Error('docx'));
+    s.onerror = () => falha(new Error('docx'));
+    document.head.appendChild(s);
+  });
+}
+async function gerarDocxProposta(o, fundoBytes) {
+  const D = await carregarDocxLib();
+  const mm = (v) => Math.round(v * 56.6929);           // mm → twips
+  const emu = (v) => Math.round(v * 36000);            // mm → EMU
+  const FONT = 'Arial', SZ = 21;
+  const run = (t, b) => new D.TextRun({text: String(t == null ? '' : t), bold: !!b, font: FONT, size: SZ});
+  const par = (runs, opt) => new D.Paragraph({children: Array.isArray(runs) ? runs : [runs], spacing: {after: 0, line: 276}, ...(opt || {})});
+  const linhas = itensParaCliente(o);
+  const total = Number(o.valor) || linhas.reduce((a, l) => a + l.sub, 0);
+  const cond = [
+    ['Validade da Proposta', o.validade], ['Condições de Pagamento', o.condicoesPagamento], ['Prazo de Entrega', prazoTexto(o)],
+    ['Garantia', o.garantia], ['Local da Entrega', o.localEntrega],
+  ].filter(x => (x[1] || '').toString().trim());
+  const W = mm(174);                                    // largura útil (210 − 2×18 mm)
+  const pct = [9, 41, 9, 9, 16, 16];
+  const cw = pct.map(p => Math.round(W * p / 100));
+  const cel = (children, w, opt) => new D.TableCell({children, width: {size: w, type: D.WidthType.DXA}, margins: {top: 60, bottom: 60, left: 100, right: 100}, ...(opt || {})});
+  const cabCel = (t, w, opt) => cel([par(run(t, true), {alignment: D.AlignmentType.CENTER})], w, {verticalAlign: D.VerticalAlign.CENTER, ...(opt || {})});
+  const dinheiro = (v) => fmtBRL(v).replace('R$', '').trim();
+  const linhasTab = [
+    new D.TableRow({tableHeader: true, cantSplit: true, children: [
+      cabCel('Itens', cw[0], {rowSpan: 2}),
+      new D.TableCell({children: [par(run('Especificações', true))], width: {size: cw[1], type: D.WidthType.DXA}, rowSpan: 2, verticalAlign: D.VerticalAlign.CENTER, margins: {top: 60, bottom: 60, left: 100, right: 100}}),
+      cabCel('Und.', cw[2], {rowSpan: 2}), cabCel('Qde.', cw[3], {rowSpan: 2}),
+      cabCel('Valor (R$)', cw[4] + cw[5], {columnSpan: 2}),
+    ]}),
+    new D.TableRow({tableHeader: true, cantSplit: true, children: [cabCel('Unit', cw[4]), cabCel('Total', cw[5])]}),
+    ...linhas.map((l, i) => {
+      const specs = String(l.especificacoes || '').split(/\r?\n/).map(x => x.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+      return new D.TableRow({cantSplit: true, children: [
+        cel([par(run(String(i + 1).padStart(2, '0')), {alignment: D.AlignmentType.CENTER})], cw[0]),
+        cel([par(run(l.descricao)), ...specs.map(t => new D.Paragraph({children: [run(t)], bullet: {level: 0}, spacing: {after: 0, line: 276}}))], cw[1]),
+        cel([par(run(l.unidade || 'Und'), {alignment: D.AlignmentType.CENTER})], cw[2]),
+        cel([par(run(l.quantidade), {alignment: D.AlignmentType.CENTER})], cw[3]),
+        cel([par(run(dinheiro(l.unit)), {alignment: D.AlignmentType.RIGHT})], cw[4]),
+        cel([par(run(dinheiro(l.sub)), {alignment: D.AlignmentType.RIGHT})], cw[5]),
+      ]});
+    }),
+    new D.TableRow({cantSplit: true, children: [cel([par(run('VALOR TOTAL DA PROPOSTA: ' + fmtBRL(total), true), {alignment: D.AlignmentType.RIGHT})], W, {columnSpan: 6})]}),
+  ];
+  const tabela = new D.Table({width: {size: W, type: D.WidthType.DXA}, columnWidths: cw, rows: linhasTab});
+  const caixa = (paragrafos) => new D.Table({width: {size: W, type: D.WidthType.DXA}, columnWidths: [W], rows: [new D.TableRow({cantSplit: true, children: [cel(paragrafos, W)]})]});
+  const espaco = () => par(run(''), {spacing: {after: 0}});
+  const filhos = [
+    par(run('PROPOSTA COMERCIAL', true), {spacing: {after: 240}}),
+    par(run('À', true)), par(run(o.cliente || '', true)),
+    ...(o.numero ? [par(run('Nº Processo de Compra: ' + o.numero, true))] : []),
+    par(run(''), {spacing: {after: 120}}),
+    par([run('Prezado Cliente, obrigado pelo interesse em adquirir nossos produtos e serviços.')], {spacing: {after: 0}}),
+    par([run('Segue, nossa Proposta Comercial, para sua avaliação e aprovação.')], {spacing: {after: 200}}),
+    tabela, espaco(),
+    ...(cond.length ? [caixa(cond.map(c => par([run(c[0] + ': ', true), run(c[1])]))), espaco()] : []),
+    caixa([
+      par([run('DECLARAMOS QUE', true), run(': Nos valores constantes desta proposta estão compreendidos lucro, encargos sociais, taxas e seguros, fretes e quaisquer despesas de responsabilidade do proponente, que direta ou indiretamente, decorram da execução do objeto licitado, na forma prevista no Processo de compra e seus anexos., não cabendo a proponente qualquer reclamação posterior.')]),
+      par([run('GARANTIA:', true), run(' Garantia contra eventuais defeitos e/ou vícios de fabricação de acordo com os artigos 12, 13 e 17 a 27, do Código de Defesa do Consumidor (Lei nº 8.078, de 1990), em relação a cada produto, material ou serviços.')]),
+    ]),
+    par(run('Manaus/AM, ' + dataExtenso(o.data) + '.'), {alignment: D.AlignmentType.RIGHT, spacing: {before: 240, after: 0}}),
+    par(run(''), {spacing: {before: 600, after: 0}, border: {bottom: {style: D.BorderStyle.SINGLE, size: 6, space: 1, color: '000000'}}, indent: {right: mm(100)}}),
+    par(run('NOVARI PRINT COM. DE PAPELARIA E SERV. GRÁFICOS LTDA', true), {spacing: {before: 80, after: 0}}),
+    par(run('CNPJ: 16.943.709/0001-60', true)),
+  ];
+  const fundo = new D.Paragraph({spacing: {after: 0}, children: [new D.ImageRun({
+    data: fundoBytes, type: 'jpg', transformation: {width: Math.round(210 * 96 / 25.4), height: Math.round(297 * 96 / 25.4)},
+    floating: {
+      horizontalPosition: {relative: D.HorizontalPositionRelativeFrom.PAGE, offset: 0},
+      verticalPosition: {relative: D.VerticalPositionRelativeFrom.PAGE, offset: 0},
+      behindDocument: true, allowOverlap: true, lockAnchor: true,
+    },
+  })]});
+  const rodape = new D.Paragraph({alignment: D.AlignmentType.RIGHT, spacing: {after: 0}, children: [
+    new D.TextRun({text: 'NOVARI PRINT COM. DE PAPELARIA E SERV. GRÁFICOS LTDA', bold: true, font: FONT, size: 16, color: '151F38'}),
+    new D.TextRun({text: ' - CNPJ: 16.943.709/0001-60', font: FONT, size: 16, color: '151F38'}),
+  ]});
+  const doc = new D.Document({
+    creator: 'Novari Print', title: 'Proposta ' + (o.numeroInterno || 'comercial'),
+    styles: {default: {document: {run: {font: FONT, size: SZ}}}},
+    sections: [{
+      properties: {page: {size: {width: mm(210), height: mm(297)}, margin: {top: mm(36), bottom: mm(42), left: mm(18), right: mm(18), header: 0, footer: mm(31)}}},
+      headers: {default: new D.Header({children: [fundo]})},
+      footers: {default: new D.Footer({children: [rodape]})},
+      children: filhos,
+    }],
+  });
+  return D.Packer.toBlob(doc);
+}
+async function baixarPropostaWord(o) {
+  try {
+    const resp = await fetch(new URL('timbrado-comercial.jpg', location.href).href);
+    if (!resp.ok) throw new Error('timbrado');
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+    const blob = await gerarDocxProposta(o, bytes);
+    const nome = ('Proposta ' + (o.numeroInterno ? o.numeroInterno + ' - ' : '') + (o.cliente || '')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() + '.docx';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nome;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  } catch (e) {
+    alert('Não foi possível gerar o arquivo Word agora. Verifique a conexão com a internet e tente de novo.');
+  }
+}
+
 /* ── Header ──────────────────────────────── */
 const ACTIVE = "vendas";
 const NAV_ITEMS = [
@@ -521,7 +731,7 @@ function useCollection(name) {
 
 /* ── FORM: Novo / Editar Orçamento ───────── */
 function newItemRow() {
-  return { id: 'it' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), descricao: '', quantidade: '', valorUnit: '' };
+  return { id: 'it' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), descricao: '', unidade: 'Und', especificacoes: '', quantidade: '', valorUnit: '' };
 }
 function newCostRow(nome) {
   return { id: 'ct' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nome: nome || '', valor: '' };
@@ -533,7 +743,8 @@ function OrcamentoForm({data, onClose}) {
     cliente:'', descricao:'', numero:'', itens:[newItemRow()],
     custos:[newCostRow('Imposto'), newCostRow('Taxa de Administração'), newCostRow('Lucro'), newCostRow('Frete')],
     prazo:'', responsavel:'', prioridade:'media',
-    data:todayBR(), validade:'', status:'analise', linkDrive:'', observacoes:'',
+    data:todayBR(), validade:'30 dias', status:'analise', linkDrive:'', observacoes:'',
+    condicoesPagamento:'30 dias', prazoEntrega:'20 dias', garantia:'12 meses', localEntrega:'',
   };
   const [form, setForm] = useState(data ? {
     ...empty, ...data,
@@ -542,6 +753,8 @@ function OrcamentoForm({data, onClose}) {
     itens: (Array.isArray(data.itens) && data.itens.length) ? data.itens.map(it => ({
       id: 'it' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       descricao: it.descricao || '',
+      unidade: it.unidade || 'Und',
+      especificacoes: it.especificacoes || '',
       quantidade: (it.quantidade === 0 || it.quantidade) ? it.quantidade : '',
       valorUnit: (it.valorUnit === 0 || it.valorUnit) ? it.valorUnit : '',
     })) : [{ ...newItemRow(), quantidade: (data.quantidade === 0 || data.quantidade) ? data.quantidade : '', valorUnit: (data.valorUnit === 0 || data.valorUnit) ? data.valorUnit : '' }],
@@ -558,6 +771,10 @@ function OrcamentoForm({data, onClose}) {
     ],
     // compatibilidade com orçamentos antigos, que guardavam a nota em "observacao"
     observacoes: data.observacoes ?? data.observacao ?? '',
+    // campos da proposta: orçamentos antigos ficam em branco (nada é preenchido por conta própria)
+    validade: data.validade || '',
+    condicoesPagamento: data.condicoesPagamento || '', prazoEntrega: data.prazoEntrega || '',
+    garantia: data.garantia || '', localEntrega: data.localEntrega || '',
   } : empty);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -587,6 +804,8 @@ function OrcamentoForm({data, onClose}) {
         numero: (form.numero||'').trim(),
         itens: form.itens.map(it => ({
           descricao: (it.descricao||'').trim(),
+          unidade: (it.unidade||'').trim() || 'Und',
+          especificacoes: (it.especificacoes||'').trim(),
           quantidade: Number(it.quantidade) || 0,
           valorUnit: Number(it.valorUnit) || 0,
         })),
@@ -603,6 +822,10 @@ function OrcamentoForm({data, onClose}) {
         status: form.status || 'analise',
         linkDrive: (form.linkDrive||'').trim(),
         observacoes: (form.observacoes||'').trim(),
+        condicoesPagamento: (form.condicoesPagamento||'').trim(),
+        prazoEntrega: (form.prazoEntrega||'').trim(),
+        garantia: (form.garantia||'').trim(),
+        localEntrega: (form.localEntrega||'').trim(),
       };
       // vínculo com o cadastro de Clientes (o nome digitado continua sendo guardado como está)
       if (clienteCadastro) d.clienteId = clienteCadastro.id;
@@ -671,6 +894,7 @@ function OrcamentoForm({data, onClose}) {
               <div className="item-num">Item {i+1}</div>
               <div className="item-grid">
                 <div className="f"><label>Descrição do item</label><input className="inp" value={it.descricao} onChange={e=>setItem(it.id,'descricao',e.target.value)} placeholder="Ex: Banner lona 2x1m"/></div>
+                <div className="f"><label>Und.</label><input className="inp" value={it.unidade} onChange={e=>setItem(it.id,'unidade',e.target.value)} placeholder="Und"/></div>
                 <div className="f"><label>Qtd.</label><input className="inp" type="number" value={it.quantidade} onChange={e=>setItem(it.id,'quantidade',e.target.value)} placeholder="1"/></div>
                 <div className="f"><label>Valor unit. (R$)</label><input className="inp" type="number" step="0.01" value={it.valorUnit} onChange={e=>setItem(it.id,'valorUnit',e.target.value)} placeholder="0.00"/></div>
                 <div className="item-sub">{fmtBRL((Number(it.quantidade)||0)*(Number(it.valorUnit)||0))}</div>
@@ -678,6 +902,7 @@ function OrcamentoForm({data, onClose}) {
                   <Icon name="trash" style={{width:14,height:14}}/>
                 </button>
               </div>
+              <div className="f" style={{marginTop:8}}><label>Especificações (opcional — uma por linha, aparecem na proposta)</label><textarea className="inp" rows={2} value={it.especificacoes} onChange={e=>setItem(it.id,'especificacoes',e.target.value)} placeholder={'Ex:\nImpressão colorida 4x4\nPapel couchê 150g'}/></div>
             </div>
           ))}
           <button type="button" className="item-add" onClick={addItem}><Icon name="plus" style={{width:14,height:14}}/> Adicionar item</button>
@@ -704,7 +929,7 @@ function OrcamentoForm({data, onClose}) {
 
         <div className="fgroup-lab">Prazo e responsável</div>
         <div className="row2">
-          <div className="f"><label>Prazo de entrega</label><input className="inp" type="date" value={form.prazo} onChange={e=>set('prazo',e.target.value)}/></div>
+          <div className="f"><label>Data limite de entrega (interna)</label><input className="inp" type="date" value={form.prazo} onChange={e=>set('prazo',e.target.value)}/></div>
           <div className="f"><label>Responsável / fornecedor</label><input className="inp" value={form.responsavel} onChange={e=>set('responsavel',e.target.value)} placeholder="Nome"/></div>
         </div>
         <div className="row2">
@@ -727,10 +952,20 @@ function OrcamentoForm({data, onClose}) {
           </div>
         </div>
 
+        <div className="fgroup-lab">Condições da proposta (aparecem no PDF)</div>
+        <div className="row2">
+          <div className="f"><label>Condições de pagamento</label><input className="inp" value={form.condicoesPagamento} onChange={e=>set('condicoesPagamento',e.target.value)} placeholder="Ex: 30 dias"/></div>
+          <div className="f"><label>Prazo de entrega na proposta</label><input className="inp" value={form.prazoEntrega} onChange={e=>set('prazoEntrega',e.target.value)} placeholder="Ex: 20 dias"/></div>
+        </div>
+        <div className="row2">
+          <div className="f"><label>Garantia</label><input className="inp" value={form.garantia} onChange={e=>set('garantia',e.target.value)} placeholder="Ex: 12 meses"/></div>
+          <div className="f"><label>Validade da proposta</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="Ex: 30 dias"/></div>
+        </div>
+        <div className="f"><label>Local da entrega</label><input className="inp" value={form.localEntrega} onChange={e=>set('localEntrega',e.target.value)} placeholder="Endereço completo de entrega"/></div>
+
         <div className="fgroup-lab">Vendas</div>
         <div className="row2">
           <div className="f"><label>Data do orçamento</label><input className="inp" value={form.data} onChange={e=>set('data',e.target.value)} placeholder="dd/mm/aaaa"/></div>
-          <div className="f"><label>Validade</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="dd/mm/aaaa"/></div>
         </div>
         <div className="f">
           <label>Orçamento (link do Google Drive)</label>
@@ -843,6 +1078,8 @@ function App() {
                           <td><span className={"status " + statusCls(o.status)}><span className={"dot " + statusCls(o.status)}></span>{STATUS_META[o.status]?.label || o.status}</span></td>
                           <td style={{whiteSpace:'nowrap'}}>
                             {o.status === 'aprovado' && !o.pedidoId && <button className="btn sm" style={{marginRight:6}} onClick={() => {setGerarErr(''); setGerar(o);}}><Icon name="plus" style={{width:13,height:13}}/> Gerar pedido</button>}
+                            <button className="btn sm" style={{marginRight:6}} title="Gerar PDF da proposta" aria-label="Gerar PDF da proposta" onClick={() => imprimirProposta(o)}><Icon name="file" style={{width:13,height:13}}/> PDF</button>
+                            <button className="btn sm" style={{marginRight:6}} title="Baixar a proposta em Word (editável)" aria-label="Baixar a proposta em Word" onClick={() => baixarPropostaWord(o)}><Icon name="file" style={{width:13,height:13}}/> Word</button>
                             {o.pedidoId && <span className="numi" style={{marginRight:8,color:'var(--ok)'}} title={'Pedido ' + o.pedidoId}>✓ Pedido gerado</span>}
                             <button className="btn sm" onClick={() => {setEditItem(o); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button>
                           </td>
