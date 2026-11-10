@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Lixeira - Novari Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" src="auth-gate.js"></script>
+<style>
+:root{
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  --navy:#151F38; --red:#CE1B21; --blue:#66B2E5;
+  --c-blue:#2E86C7; --c-sky:#2E9BD6; --c-green:#1E9E6A; --c-red:#CE1B21; --c-amber:#B4791A; --c-violet:#6D54C8;
+  --side-bg:#151F38; --side-ink:#EEF2FB; --side-muted:#93A0C0;
+  --side-active:rgba(206,27,33,.16); --side-hover:rgba(255,255,255,.06); --side-line:rgba(255,255,255,.09);
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#EEF0F5; --hover:#F3F5F9;
+  --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
+  --line:#E2E6EE; --line-strong:#CFD6E2;
+  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7; --brand-red:#CE1B21; --brand-blue:#66B2E5;
+  --alert:#B42318; --alert-bg:#FEF0EE; --warn:#A54A08; --warn-bg:#FDF3E7; --ok:#067647; --ok-bg:#E8F6EF;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --side-bg:#111A30;
+  --bg:#0C1220; --surface:#151C2E; --col:#1A2238; --hover:#1C2540;
+  --ink:#E8ECF5; --ink-2:#AEB8CE; --muted:#8B96AE;
+  --line:#242D44; --line-strong:#34405C;
+  --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5; --brand-red:#FF6B61; --brand-blue:#66B2E5;
+  --alert:#FF8F80; --alert-bg:#331A18; --warn:#F2B25A; --warn-bg:#2E2212; --ok:#5BD29A; --ok-bg:#122A22;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --side-bg:#111A30;
+  --bg:#0C1220; --surface:#151C2E; --col:#1A2238; --hover:#1C2540;
+  --ink:#E8ECF5; --ink-2:#AEB8CE; --muted:#8B96AE;
+  --line:#242D44; --line-strong:#34405C;
+  --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5; --brand-red:#FF6B61; --brand-blue:#66B2E5;
+  --alert:#FF8F80; --alert-bg:#331A18; --warn:#F2B25A; --warn-bg:#2E2212; --ok:#5BD29A; --ok-bg:#122A22;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0}
+.logo-img{height:38px;width:auto;display:block}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2;color:var(--ink);text-align:left}
+.brand-sub{color:var(--muted);font-size:12.5px;text-align:left}
+
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;padding:0;margin-bottom:10px}
+.back:hover{color:var(--ink)}
+.page-h{margin:0 0 20px}
+.page-h h1{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.page-h p{margin:0;color:var(--muted);font-size:13px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13.5px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn.danger{color:var(--alert);border-color:var(--alert)}
+.btn.danger:hover{background:var(--alert-bg)}
+.btn.sm{height:30px;font-size:12px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* Top bar */
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.total-line{margin:14px 0 18px;font-size:13px;color:var(--muted)}
+.total-line b{color:var(--ink);font-weight:700}
+
+/* Cards clicáveis de tipo de cliente */
+.vgrid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:22px}
+.vcard{position:relative;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:20px;cursor:pointer;font:inherit;color:inherit}
+.vcard:hover{border-color:var(--line-strong)}
+.vcard.on{border-color:var(--vc)}
+.vcard .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.vcard .chip{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--vbg);color:var(--vc)}
+.vcard .chip .ic{width:23px;height:23px}
+.vcard .count{font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+.vcard h3{margin:0 0 3px;font-size:15px;font-weight:600;color:var(--ink)}
+.vcard .sub{font-size:13px;color:var(--muted)}
+.vcard.orgao{--vc:#1D6FA5;--vbg:#EAF5FC}
+.vcard.privada{--vc:#166534;--vbg:#F0FDF4}
+@media (max-width:620px){ .vgrid2{grid-template-columns:1fr} }
+
+/* Search & filters */
+.tools{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:0 12px}
+.search input{flex:1;border:0;background:none;height:40px;font-size:14px;color:var(--ink);outline:none}
+.clear{font-size:12.5px;color:var(--accent);font-weight:600;cursor:pointer;background:none;border:0;padding:0}
+
+/* Contact list */
+.clist{display:flex;flex-direction:column;gap:8px}
+.ccard{display:block;width:100%;text-align:left;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font:inherit;color:inherit}
+.ccard:hover{border-color:var(--line-strong)}
+.c-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.c-h h4{margin:0;font-size:14.5px;font-weight:600}
+.tag{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.tag.orgao{background:#EAF5FC;color:#1D6FA5}
+.tag.privada{background:#F0FDF4;color:#166534}
+@media (prefers-color-scheme:dark){
+  .tag.orgao{background:#172544;color:#93C5FD}
+  .tag.privada{background:#183A28;color:#5BD29A}
+}
+.meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted)}
+.meta span{display:inline-flex;align-items:center;gap:5px}
+
+/* Dialog */
+.ov{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,14,28,.55)}
+.dlg{width:520px;max-width:100%;max-height:92vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 10px}
+.dlg-h h2{margin:0;font-size:16px;font-weight:700}
+.dlg-b{padding:6px 22px 18px}
+.dlg-f{display:flex;gap:8px;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--line)}
+.dlg-f .right{display:flex;gap:8px}
+.x{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.x:hover{background:var(--hover);color:var(--ink)}
+.form{display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f label{display:block;margin-bottom:5px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.inp:focus{border-color:var(--accent);outline:none}
+select.inp{appearance:auto}
+.seg{display:flex;gap:0}
+.seg button{flex:1;padding:8px 12px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer}
+.seg button:first-child{border-radius:6px 0 0 6px}
+.seg button:last-child{border-radius:0 6px 6px 0}
+.seg button+button{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+.loading{color:var(--muted);padding:30px 0;text-align:center}
+
+@media (max-width:820px){.row2{grid-template-columns:1fr}}
+
+/* ===== Casca padrão Novari (sidebar + topbar) ===== */
+.side{position:fixed;left:0;top:0;bottom:0;width:238px;z-index:30;background:var(--side-bg);color:var(--side-ink);
+  display:flex;flex-direction:column;gap:4px;padding:16px 12px calc(16px + env(safe-area-inset-bottom,0px));
+  border-right:1px solid var(--side-line);overflow-y:auto}
+.side-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px;text-decoration:none}
+.side-brand img{height:34px;width:auto;display:block;background:#fff;border-radius:8px;padding:3px}
+.side-brand .nm{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.15;color:var(--side-ink)}
+.side-brand .sb{font-size:11.5px;color:var(--side-muted);letter-spacing:.03em;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav .lab{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--side-muted);padding:12px 10px 4px}
+.navi{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;color:var(--side-ink);
+  text-decoration:none;font-size:13.5px;font-weight:500;position:relative;opacity:.86;cursor:pointer;border:0;background:none;text-align:left;width:100%}
+.navi:hover{background:var(--side-hover);opacity:1}
+.navi.active{background:var(--side-active);opacity:1;font-weight:600}
+.navi.active::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--red)}
+.navi.soon{opacity:.5;cursor:default}.navi.soon:hover{background:none}
+.navi .ic{width:17px;height:17px;opacity:.95}
+body{padding-left:238px}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--surface);
+  border-bottom:1px solid var(--line);border-top:3px solid var(--red);position:sticky;top:0;z-index:10;
+  padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.tb-search{flex:1;min-width:0;max-width:440px;display:flex;align-items:center;gap:9px;background:var(--col);
+  border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--muted)}
+.tb-search input{border:0;background:transparent;color:var(--ink);font-size:13.5px;width:100%;outline:none}
+.tb-search input::placeholder{color:var(--muted)}
+.tb-search .ic{width:16px;height:16px}
+.tb-sp{flex:1}
+.ib{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--ink-2);background:transparent;border:1px solid transparent;cursor:pointer;position:relative}
+.ib:hover{background:var(--hover);border-color:var(--line)}
+.ib .ic{width:18px;height:18px}
+.ib .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+.tb-user{display:flex;align-items:center;gap:10px;padding-left:2px}
+.tb-ava{width:38px;height:38px;border-radius:10px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+.tb-user .un{font-weight:600;font-size:13.5px;line-height:1.15}
+.tb-user .ur{font-size:11.5px;color:var(--muted)}
+.theme-moon,.theme-sun{display:none}
+:root:not([data-theme]) .theme-moon{display:block}
+@media (prefers-color-scheme:dark){ :root:not([data-theme]) .theme-moon{display:none} :root:not([data-theme]) .theme-sun{display:block} }
+:root[data-theme="light"] .theme-moon{display:block}
+:root[data-theme="dark"] .theme-sun{display:block}
+.back{display:none!important}
+@media (max-width:820px){
+  body{padding-left:0}
+  .side{position:static;width:auto;flex-direction:row;align-items:center;gap:8px;overflow-x:auto;padding:10px 12px;border-right:0;border-bottom:1px solid var(--side-line)}
+  .side-brand{padding:0 8px 0 2px;border-right:1px solid var(--side-line);margin-right:4px}
+  .side-brand .sb{display:none}
+  .nav{flex-direction:row;gap:4px}
+  .nav .lab{display:none}
+  .navi{white-space:nowrap;padding:8px 11px;width:auto}
+  .navi.active::before{display:none}
+  .navi.active{box-shadow:inset 0 -2px 0 var(--red)}
+}
+@media (max-width:520px){ .topbar{flex-wrap:wrap} .tb-search{order:3;max-width:none;flex-basis:100%} .tb-user .un,.tb-user .ur{display:none} }
+
+
+/* Lixeira */
+.lx-note{display:flex;gap:10px;align-items:flex-start;background:var(--col);border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--ink-2);margin-bottom:16px}
+.lx-panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lx-scroll{overflow-x:auto}
+.lx-t{width:100%;border-collapse:collapse;min-width:640px}
+.lx-t th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:11px 14px;background:var(--col);font-weight:700}
+.lx-t td{padding:12px 14px;border-top:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+.lx-t td small{display:block;color:var(--muted);font-size:12px}
+.lx-tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--col);color:var(--ink-2);white-space:nowrap}
+.lx-acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.lx-ok{color:var(--ok);border-color:var(--ok);background:var(--ok-bg);font-weight:600}
+.lx-del{color:var(--alert);border-color:transparent;background:none}
+.lx-err{margin:0 0 14px;padding:10px 14px;border:1px solid var(--alert);background:var(--alert-bg);color:var(--alert);border-radius:10px;font-size:13px;font-weight:600}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+  <symbol id="i-trending" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
+  <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+</svg>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useMemo} = React;
+
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PAINEL_URL = "./";
+
+function Icon({name, className}) {
+  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+}
+
+/* ── Header (padrão) ─────────────────────── */
+const ACTIVE = "lixeira";
+const NAV_ITEMS = [
+  {key:'index', nome:'Painel', icon:'grid', href:'index.html'},
+  {key:'contatos', nome:'Clientes', icon:'users', href:'contatos.html'},
+  {key:'vendas', nome:'Vendas', icon:'trending', href:'vendas.html'},
+  {key:'pedidos', nome:'Pedidos', icon:'package', href:'pedidos.html'},
+  {key:'financeiro', nome:'Financeiro', icon:'wallet', href:'financeiro.html'},
+  {key:'administrativo', nome:'Administrativo', icon:'building', href:'administrativo.html'},
+  {key:'estoque', nome:'Estoque', icon:'box', href:'estoque.html'},
+  {key:'licitacao', nome:'Licitação', icon:'gavel', href:'licitacao.html'},
+];
+function Sidebar() {
+  return (
+    <aside className="side">
+      <a href={PAINEL_URL} className="side-brand">
+        <img src="novari-icon.png" alt="Novari Print" />
+        <div><div className="nm">Novari Print</div><div className="sb">Gestão</div></div>
+      </a>
+      <nav className="nav">
+        {NAV_ITEMS.map(n => (
+          <a key={n.key} className={"navi" + (n.key===ACTIVE ? " active" : "")}
+             href={n.href} target={n.ext ? "_blank" : undefined} rel={n.ext ? "noopener" : undefined}>
+            <Icon name={n.icon} />{n.nome}
+          </a>
+        ))}
+        <div className="lab">Sistema</div>
+        <a className={"navi" + (ACTIVE==="lixeira" ? " active" : "")} href="lixeira.html"><Icon name="trash" />Lixeira</a>
+        <span className="navi soon"><Icon name="chart" />Relatórios</span>
+        <span className="navi soon"><Icon name="settings" />Configurações</span>
+      </nav>
+    </aside>
+  );
+}
+function toggleTheme(){
+  const r = document.documentElement;
+  let cur = r.getAttribute('data-theme');
+  if(!cur) cur = (window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches) ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  r.setAttribute('data-theme', next);
+  try{ localStorage.setItem('novari-theme', next); }catch(e){}
+}
+function Topbar() {
+  return (
+    <header className="topbar">
+      <div className="tb-search"><Icon name="search" /><input placeholder="Buscar…" aria-label="Buscar" /></div>
+      <div className="tb-sp"></div>
+      <button className="ib" onClick={toggleTheme} aria-label="Tema claro/escuro">
+        <svg className="ic theme-moon" viewBox="0 0 24 24"><use href="#i-moon"/></svg>
+        <svg className="ic theme-sun" viewBox="0 0 24 24"><use href="#i-sun"/></svg>
+      </button>
+      <button className="ib" onClick={() => firebase.auth().signOut()} aria-label="Sair" title="Sair"><Icon name="logout" /></button>
+      <button className="ib" aria-label="Notificações"><Icon name="bell" /><span className="dot"></span></button>
+      <button className="ib" aria-label="Ajuda"><Icon name="help" /></button>
+      <div className="tb-user">
+        <div className="tb-ava">NM</div>
+        <div><div className="un">Nicolas Monte</div><div className="ur">Administrador</div></div>
+      </div>
+    </header>
+  );
+}
+function Header() {
+  return (<React.Fragment><Sidebar /><Topbar /></React.Fragment>);
+}
+
+/* ── Lixeira ─────────────────────────────── */
+const LX_COLECOES = [
+  {col:'contatos', modulo:'Clientes'}, {col:'orcamentos', modulo:'Vendas'}, {col:'pedidos', modulo:'Pedidos'},
+  {col:'contas_pagar', modulo:'Financeiro'}, {col:'contas_receber', modulo:'Financeiro'},
+  {col:'notas_entrada', modulo:'Financeiro'}, {col:'notas_saida', modulo:'Financeiro'},
+  {col:'estoque_itens', modulo:'Estoque'}, {col:'estoque_movimentacoes', modulo:'Estoque'},
+  {col:'editais', modulo:'Licitação'}, {col:'concorrentes', modulo:'Licitação'},
+  {col:'certidoes', modulo:'Administrativo'}, {col:'documentos', modulo:'Administrativo'},
+  {col:'licencas', modulo:'Administrativo'}, {col:'patrimonio', modulo:'Administrativo'},
+];
+const LX_NOMES = {contatos:'Cliente', orcamentos:'Orçamento', pedidos:'Pedido', contas_pagar:'Conta a pagar', contas_receber:'Conta a receber',
+  notas_entrada:'Nota de entrada', notas_saida:'Nota de saída', estoque_itens:'Item de estoque', estoque_movimentacoes:'Movimentação de estoque',
+  editais:'Edital', concorrentes:'Concorrente', certidoes:'Certidão', documentos:'Documento', licencas:'Licença', patrimonio:'Patrimônio'};
+function lxTitulo(d){
+  const k = ['nome','cliente','descricao','titulo','objeto','orgao','razaoSocial','itemNome','numero','fornecedor'];
+  for (const x of k) if (d[x] && String(d[x]).trim()) return String(d[x]).trim();
+  return '(sem nome)';
+}
+function lxSub(col, d){
+  const p = [LX_NOMES[col] || col];
+  if (d.descricao && d.descricao !== lxTitulo(d)) p.push(String(d.descricao).slice(0, 60));
+  if (d.valor) p.push('R$ ' + Number(d.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}));
+  if (d.quantidade) p.push(d.quantidade + ' un.');
+  if (d.vencimento) p.push('venc. ' + d.vencimento);
+  return p.join(' · ');
+}
+function lxData(v){
+  try { const d = v && v.toDate ? v.toDate() : (v ? new Date(v) : null); if (!d || isNaN(d)) return '—';
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); } catch(e) { return '—'; }
+}
+function lxMs(v){ try { return v && v.toDate ? v.toDate().getTime() : (v ? new Date(v).getTime() : 0); } catch(e) { return 0; } }
+
+function useLixeira(){
+  const [mapa, setMapa] = useState({});
+  const [carregadas, setCarregadas] = useState(0);
+  useEffect(() => {
+    if (!db) return;
+    const vistos = {};
+    const unsubs = LX_COLECOES.map(c => db.collection(c.col).where('excluido', '==', true).onSnapshot(snap => {
+      setMapa(m => ({...m, [c.col]: snap.docs.map(d => ({id:d.id, col:c.col, modulo:c.modulo, ...d.data()}))}));
+      if (!vistos[c.col]) { vistos[c.col] = true; setCarregadas(n => n + 1); }
+    }, err => { if (!vistos[c.col]) { vistos[c.col] = true; setCarregadas(n => n + 1); } if (window.novariErroLeitura) window.novariErroLeitura(c.col, err); }));
+    return () => unsubs.forEach(u => u());
+  }, []);
+  const itens = useMemo(() => Object.values(mapa).flat().sort((a, b) => lxMs(b.excluidoEm) - lxMs(a.excluidoEm)), [mapa]);
+  return {itens, loading: carregadas < LX_COLECOES.length};
+}
+
+function confirmarDefinitivo(nome){
+  return new Promise(resolve => {
+    const bg = document.createElement('div');
+    bg.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(10,16,32,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+    const box = document.createElement('div');
+    box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true');
+    box.style.cssText = 'width:400px;max-width:100%;background:var(--surface,#fff);color:var(--ink,#111B33);border:1px solid var(--line,#E2E6EE);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:20px 22px;font:14px/1.45 Inter,system-ui,sans-serif';
+    const h = document.createElement('h3'); h.textContent = 'Excluir definitivamente?'; h.style.cssText = 'margin:0 0 6px;font-size:16px';
+    const p = document.createElement('p'); p.style.cssText = 'margin:0 0 16px;font-size:13.5px;color:var(--ink-2,#4B5673)';
+    p.textContent = '"' + nome + '" será apagado de vez. Esta ação não pode ser desfeita.';
+    const f = document.createElement('div'); f.style.cssText = 'display:flex;justify-content:flex-end;gap:8px';
+    const bc = document.createElement('button'); bc.type = 'button'; bc.textContent = 'Cancelar';
+    bc.style.cssText = 'height:36px;padding:0 14px;border:1px solid var(--line-strong,#CFD6E2);border-radius:7px;background:var(--surface,#fff);color:var(--ink,#111B33);font:inherit;cursor:pointer';
+    const bo = document.createElement('button'); bo.type = 'button'; bo.textContent = 'Excluir definitivamente';
+    bo.style.cssText = 'height:36px;padding:0 14px;border:1px solid #B42318;border-radius:7px;background:#B42318;color:#fff;font:inherit;font-weight:600;cursor:pointer';
+    function fim(v){ document.removeEventListener('keydown', tecla, true); bg.remove(); resolve(v); }
+    function tecla(e){ if (e.key === 'Escape') { e.stopPropagation(); fim(false); } }
+    bc.onclick = () => fim(false); bo.onclick = () => fim(true);
+    bg.onclick = e => { if (e.target === bg) fim(false); };
+    document.addEventListener('keydown', tecla, true);
+    f.appendChild(bc); f.appendChild(bo); box.appendChild(h); box.appendChild(p); box.appendChild(f); bg.appendChild(box);
+    document.body.appendChild(bg); bc.focus();
+  });
+}
+
+function App() {
+  const {itens, loading} = useLixeira();
+  const [ocupado, setOcupado] = useState(null);
+  const [erro, setErro] = useState('');
+  const DEL = firebase.firestore.FieldValue.delete();
+
+  async function restaurar(it) {
+    setErro(''); setOcupado(it.id);
+    try {
+      const ref = db.collection(it.col).doc(it.id);
+      const limpa = {excluido: DEL, excluidoEm: DEL, excluidoPor: DEL};
+      if (it.col === 'estoque_movimentacoes' && it.itemId) {
+        // Ao excluir, a quantidade do item foi revertida; ao restaurar, ela é reaplicada.
+        const qty = parseFloat(it.quantidade) || 0;
+        const batch = db.batch();
+        batch.update(ref, limpa);
+        batch.update(db.collection('estoque_itens').doc(it.itemId), {qtdAtual: firebase.firestore.FieldValue.increment(it.tipo === 'entrada' ? qty : -qty)});
+        await batch.commit();
+      } else {
+        await ref.update(limpa);
+      }
+    } catch(e) { console.error(e); setErro('Não foi possível restaurar "' + lxTitulo(it) + '". Nada foi alterado. (' + (e.code || e.message) + ')'); }
+    finally { setOcupado(null); }
+  }
+
+  async function apagar(it) {
+    if (!(await confirmarDefinitivo(lxTitulo(it)))) return;
+    setErro(''); setOcupado(it.id);
+    try {
+      if (it.pdfId) {
+        const aref = db.collection('arquivos').doc(it.pdfId);
+        const partes = await aref.collection('partes').get();
+        const batch = db.batch();
+        partes.docs.forEach(d => batch.delete(d.ref));
+        batch.delete(aref);
+        await batch.commit();
+      }
+      await db.collection(it.col).doc(it.id).delete();
+    } catch(e) { console.error(e); setErro('Não foi possível excluir "' + lxTitulo(it) + '". (' + (e.code || e.message) + ')'); }
+    finally { setOcupado(null); }
+  }
+
+  return (
+    <React.Fragment>
+      <Header />
+      <main className="wrap">
+        <div className="page-h">
+          <h1>Lixeira</h1>
+          <p>Tudo que for excluído em qualquer módulo vem para cá e pode ser restaurado.</p>
+        </div>
+        <div className="lx-note"><Icon name="trash" /><div>Nada é apagado automaticamente. Um item só some de vez se você clicar em <b>Excluir definitivamente</b> aqui.</div></div>
+        {erro && <div className="lx-err" role="alert">{erro}</div>}
+        <div className="lx-panel">
+          {loading ? <div className="empty">Carregando…</div> : itens.length === 0 ? <div className="empty">A lixeira está vazia.</div> : (
+            <div className="lx-scroll">
+              <table className="lx-t">
+                <thead><tr><th>Item</th><th>Módulo</th><th>Excluído em</th><th>Por</th><th></th></tr></thead>
+                <tbody>
+                  {itens.map(it => (
+                    <tr key={it.col + '/' + it.id}>
+                      <td><b>{lxTitulo(it)}</b><small>{lxSub(it.col, it)}</small></td>
+                      <td><span className="lx-tag">{it.modulo}</span></td>
+                      <td>{lxData(it.excluidoEm)}</td>
+                      <td>{it.excluidoPor || '—'}</td>
+                      <td><div className="lx-acts">
+                        <button className="btn sm lx-ok" disabled={ocupado === it.id} onClick={() => restaurar(it)}>Restaurar</button>
+                        <button className="btn sm lx-del" disabled={ocupado === it.id} onClick={() => apagar(it)}>Excluir definitivamente</button>
+                      </div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
+    </React.Fragment>
+  );
+}
+
+(function(){try{var t=localStorage.getItem('novari-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+ReactDOM.createRoot(document.getElementById('root')).render(<AuthGate><App /></AuthGate>);
+</script>
+</body>
+</html>

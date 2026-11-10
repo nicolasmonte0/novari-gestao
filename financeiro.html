@@ -270,6 +270,35 @@ body{padding-left:238px}
 <script type="text/babel">
 const {useState, useEffect, useCallback, useMemo} = React;
 
+/* ---------- Lixeira: excluir vira "mover para a lixeira" (reversível) ---------- */
+function lixeiraCampos(){
+  return {excluido:true, excluidoEm: firebase.firestore.FieldValue.serverTimestamp(), excluidoPor: ((firebase.auth().currentUser || {}).email) || ''};
+}
+function confirmarLixeira(oque, extra){
+  return new Promise(resolve => {
+    const bg = document.createElement('div');
+    bg.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(10,16,32,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+    const box = document.createElement('div');
+    box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true');
+    box.style.cssText = 'width:400px;max-width:100%;background:var(--surface,#fff);color:var(--ink,#111B33);border:1px solid var(--line,#E2E6EE);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:20px 22px;font:14px/1.45 Inter,system-ui,sans-serif';
+    const h = document.createElement('h3'); h.textContent = 'Mover para a lixeira?'; h.style.cssText = 'margin:0 0 6px;font-size:16px';
+    const p = document.createElement('p'); p.style.cssText = 'margin:0 0 16px;font-size:13.5px;color:var(--ink-2,#4B5673)';
+    p.textContent = oque + ' sai da lista, mas fica na Lixeira e pode ser restaurado quando quiser.' + (extra ? ' ' + extra : '');
+    const f = document.createElement('div'); f.style.cssText = 'display:flex;justify-content:flex-end;gap:8px';
+    const bc = document.createElement('button'); bc.type = 'button'; bc.textContent = 'Cancelar';
+    bc.style.cssText = 'height:36px;padding:0 14px;border:1px solid var(--line-strong,#CFD6E2);border-radius:7px;background:var(--surface,#fff);color:var(--ink,#111B33);font:inherit;cursor:pointer';
+    const bo = document.createElement('button'); bo.type = 'button'; bo.textContent = 'Mover para a lixeira';
+    bo.style.cssText = 'height:36px;padding:0 14px;border:1px solid #B42318;border-radius:7px;background:#B42318;color:#fff;font:inherit;font-weight:600;cursor:pointer';
+    function fim(v){ document.removeEventListener('keydown', tecla, true); bg.remove(); resolve(v); }
+    function tecla(e){ if (e.key === 'Escape') { e.stopPropagation(); fim(false); } }
+    bc.onclick = () => fim(false); bo.onclick = () => fim(true);
+    bg.onclick = e => { if (e.target === bg) fim(false); };
+    document.addEventListener('keydown', tecla, true);
+    f.appendChild(bc); f.appendChild(bo); box.appendChild(h); box.appendChild(p); box.appendChild(f); bg.appendChild(box);
+    document.body.appendChild(bg); bc.focus();
+  });
+}
+
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
   authDomain:        "licitatrack.firebaseapp.com",
@@ -361,6 +390,7 @@ function Sidebar() {
           </a>
         ))}
         <div className="lab">Sistema</div>
+        <a className={"navi" + (ACTIVE==="lixeira" ? " active" : "")} href="lixeira.html"><Icon name="trash" />Lixeira</a>
         <span className="navi soon"><Icon name="chart" />Relatórios</span>
         <span className="navi soon"><Icon name="settings" />Configurações</span>
       </nav>
@@ -430,7 +460,7 @@ function useCollection(name) {
   useEffect(() => {
     if (!db) return;
     const unsub = db.collection(name).onSnapshot(snap => {
-      setItems(snap.docs.map(d => ({id:d.id, ...d.data()})));
+      setItems(snap.docs.map(d => ({id:d.id, ...d.data()})).filter(x => !x.excluido));
       setLoading(false);
     }, err => { setLoading(false); if (window.novariErroLeitura) window.novariErroLeitura(name, err); });
     return unsub;
@@ -538,9 +568,9 @@ function ContaPagarForm({data, onClose}) {
   }
 
   async function remove() {
-    if (!window.confirm('Excluir esta conta?')) return;
+    if (!(await confirmarLixeira('Esta conta'))) return;
     setSaving(true);
-    try { await db.collection('contas_pagar').doc(data.id).delete(); onClose(); }
+    try { await db.collection('contas_pagar').doc(data.id).update(lixeiraCampos()); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
@@ -674,9 +704,9 @@ function ContaReceberForm({data, onClose}) {
   }
 
   async function remove() {
-    if (!window.confirm('Excluir esta fatura?')) return;
+    if (!(await confirmarLixeira('Esta fatura'))) return;
     setSaving(true);
-    try { await db.collection('contas_receber').doc(data.id).delete(); onClose(); }
+    try { await db.collection('contas_receber').doc(data.id).update(lixeiraCampos()); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
@@ -797,9 +827,9 @@ function NotaFiscalForm({tipo, data, onClose}) {
   }
 
   async function remove() {
-    if (!window.confirm('Excluir esta nota?')) return;
+    if (!(await confirmarLixeira('Esta nota'))) return;
     setSaving(true);
-    try { await db.collection(collection).doc(data.id).delete(); onClose(); }
+    try { await db.collection(collection).doc(data.id).update(lixeiraCampos()); onClose(); }
     catch(e) { console.error(e); setErr('Erro ao excluir.'); setSaving(false); }
   }
 
