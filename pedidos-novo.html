@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Pedidos - Novari Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
+<script type="text/babel" src="auth-gate.js?v=20261110b"></script>
+<script src="mobile.js?v=20261110c"></script>
+<style>
+:root{
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  --navy:#151F38; --red:#CE1B21; --blue:#66B2E5;
+  --c-blue:#2E86C7; --c-sky:#2E9BD6; --c-green:#1E9E6A; --c-red:#CE1B21; --c-amber:#B4791A; --c-violet:#6D54C8;
+  --side-bg:#151F38; --side-ink:#EEF2FB; --side-muted:#93A0C0;
+  --side-active:rgba(206,27,33,.16); --side-hover:rgba(255,255,255,.06); --side-line:rgba(255,255,255,.09);
+  --bg:#F3F4F7; --surface:#FFFFFF; --col:#EEF0F5; --hover:#F3F5F9;
+  --ink:#111B33; --ink-2:#4B5673; --muted:#6B7690;
+  --line:#E2E6EE; --line-strong:#CFD6E2;
+  --brand:#151F38; --brand-ink:#FFFFFF; --accent:#2E86C7; --brand-red:#CE1B21; --brand-blue:#66B2E5;
+  --alert:#B42318; --alert-bg:#FEF0EE; --warn:#A54A08; --warn-bg:#FDF3E7; --ok:#067647; --ok-bg:#E8F6EF;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --side-bg:#111A30;
+  --bg:#0C1220; --surface:#151C2E; --col:#1A2238; --hover:#1C2540;
+  --ink:#E8ECF5; --ink-2:#AEB8CE; --muted:#8B96AE;
+  --line:#242D44; --line-strong:#34405C;
+  --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5; --brand-red:#FF6B61; --brand-blue:#66B2E5;
+  --alert:#FF8F80; --alert-bg:#331A18; --warn:#F2B25A; --warn-bg:#2E2212; --ok:#5BD29A; --ok-bg:#122A22;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --side-bg:#111A30;
+  --bg:#0C1220; --surface:#151C2E; --col:#1A2238; --hover:#1C2540;
+  --ink:#E8ECF5; --ink-2:#AEB8CE; --muted:#8B96AE;
+  --line:#242D44; --line-strong:#34405C;
+  --brand:#E8ECF5; --brand-ink:#0D1322; --accent:#66B2E5; --brand-red:#FF6B61; --brand-blue:#66B2E5;
+  --alert:#FF8F80; --alert-bg:#331A18; --warn:#F2B25A; --warn-bg:#2E2212; --ok:#5BD29A; --ok-bg:#122A22;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;background:none;border:0;padding:0}
+/* ===== Casca padrão Novari (sidebar + topbar) ===== */
+.side{position:fixed;left:0;top:0;bottom:0;width:238px;z-index:30;background:var(--side-bg);color:var(--side-ink);
+  display:flex;flex-direction:column;gap:4px;padding:16px 12px calc(16px + env(safe-area-inset-bottom,0px));
+  border-right:1px solid var(--side-line);overflow-y:auto}
+.side-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px;text-decoration:none}
+.side-brand img{height:34px;width:auto;display:block;background:#fff;border-radius:8px;padding:3px}
+.side-brand .nm{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.15;color:var(--side-ink)}
+.side-brand .sb{font-size:11.5px;color:var(--side-muted);letter-spacing:.03em;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav .lab{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--side-muted);padding:12px 10px 4px}
+.navi{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;color:var(--side-ink);
+  text-decoration:none;font-size:13.5px;font-weight:500;position:relative;opacity:.86;cursor:pointer;border:0;background:none;text-align:left;width:100%}
+.navi:hover{background:var(--side-hover);opacity:1}
+.navi.active{background:var(--side-active);opacity:1;font-weight:600}
+.navi.active::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--red)}
+.navi.soon{opacity:.5;cursor:default}.navi.soon:hover{background:none}
+.navi .ic{width:17px;height:17px;opacity:.95}
+body{padding-left:238px}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--surface);
+  border-bottom:1px solid var(--line);border-top:3px solid var(--red);position:sticky;top:0;z-index:10;
+  padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.tb-search{flex:1;min-width:0;max-width:440px;display:flex;align-items:center;gap:9px;background:var(--col);
+  border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--muted)}
+.tb-search input{border:0;background:transparent;color:var(--ink);font-size:13.5px;width:100%;outline:none}
+.tb-search input::placeholder{color:var(--muted)}
+.tb-search .ic{width:16px;height:16px}
+.tb-sp{flex:1}
+.ib{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--ink-2);background:transparent;border:1px solid transparent;cursor:pointer;position:relative}
+.ib:hover{background:var(--hover);border-color:var(--line)}
+.ib .ic{width:18px;height:18px}
+.ib .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+.tb-user{display:flex;align-items:center;gap:10px;padding-left:2px}
+.tb-ava{width:38px;height:38px;border-radius:10px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+.tb-user .un{font-weight:600;font-size:13.5px;line-height:1.15}
+.tb-user .ur{font-size:11.5px;color:var(--muted)}
+.theme-moon,.theme-sun{display:none}
+:root:not([data-theme]) .theme-moon{display:block}
+@media (prefers-color-scheme:dark){ :root:not([data-theme]) .theme-moon{display:none} :root:not([data-theme]) .theme-sun{display:block} }
+:root[data-theme="light"] .theme-moon{display:block}
+:root[data-theme="dark"] .theme-sun{display:block}
+.back{display:none!important}
+@media (max-width:820px){
+  body{padding-left:0}
+  .side{position:static;width:auto;flex-direction:row;align-items:center;gap:8px;overflow-x:auto;padding:10px 12px;border-right:0;border-bottom:1px solid var(--side-line)}
+  .side-brand{padding:0 8px 0 2px;border-right:1px solid var(--side-line);margin-right:4px}
+  .side-brand .sb{display:none}
+  .nav{flex-direction:row;gap:4px}
+  .nav .lab{display:none}
+  .navi{white-space:nowrap;padding:8px 11px;width:auto}
+  .navi.active::before{display:none}
+  .navi.active{box-shadow:inset 0 -2px 0 var(--red)}
+}
+@media (max-width:520px){ .topbar{flex-wrap:wrap} .tb-search{order:3;max-width:none;flex-basis:100%} .tb-user .un,.tb-user .ur{display:none} }
+
+
+/* ===== Pedidos (isolado em .ped-app) ===== */
+.ped-app .top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);border-top:3px solid var(--brand-red)}
+.ped-app .brand{display:flex;align-items:center;gap:11px}
+.ped-app .logo-img{height:36px;width:auto;display:block}
+.ped-app .brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2}
+.ped-app .brand-sub{color:var(--muted);font-size:12.5px}
+.ped-app .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ped-app .sync{display:inline-flex;align-items:center;gap:6px;margin-right:6px;color:var(--muted);font-size:12.5px}
+.ped-app .sync i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.ped-app .sync.busy i{background:var(--warn)}
+.ped-app .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 12px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-weight:500;font-size:13px;cursor:pointer;transition:background .12s,border-color .12s}
+.ped-app .btn:hover{background:var(--hover)}
+.ped-app .btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.ped-app .btn.primary:hover{filter:brightness(1.15)}
+.ped-app .btn.danger{color:var(--alert)}
+.ped-app .btn.sm{height:30px;padding:0 10px;font-size:12.5px}
+.ped-app .pib{display:inline-flex;gap:2px}
+.ped-app .pib button{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer}
+.ped-app .pib button:hover{background:var(--hover);color:var(--ink)}
+.ped-app .wrap{max-width:1320px;margin:0 auto;padding:16px 20px 40px}
+.ped-app .pano{margin:0 0 16px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.ped-app .pano-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 44px}
+.ped-app .stat .n{display:block;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+.ped-app .stat .t{display:block;margin-top:2px;color:var(--muted);font-size:12.5px}
+.ped-app .late-pill,.ped-app .ok-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;font-weight:600;font-size:13px}
+.ped-app .late-pill{background:var(--alert-bg);color:var(--alert)}
+.ped-app .ok-pill{background:var(--col);color:var(--ok)}
+.ped-app .bar{display:flex;gap:2px;height:12px;margin:18px 0 12px;border-radius:6px;overflow:hidden}
+.ped-app .bar i{display:block;min-width:6px}
+.ped-app .legend{display:flex;flex-wrap:wrap;gap:6px}
+.ped-app .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);font-weight:500;font-size:13px;cursor:pointer;transition:border-color .12s}
+.ped-app .chip:hover{border-color:var(--line-strong)}
+.ped-app .chip[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}
+.ped-app .chip b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ped-app .sw{width:10px;height:10px;border-radius:3px}
+.ped-app .tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.ped-app .search{position:relative;flex:1;min-width:200px;max-width:420px}
+.ped-app .search input{width:100%;height:36px;padding:0 12px 0 35px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.ped-app .search .ic{position:absolute;left:11px;top:10px;color:var(--muted)}
+.ped-app .sel{height:36px;padding:0 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:13.5px;cursor:pointer}
+.ped-app .count{margin-left:auto;color:var(--muted);font-size:12.5px}
+.ped-app .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start}
+.ped-app .col{background:var(--col);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ped-app .col-h{display:flex;align-items:center;gap:8px;padding:2px 4px 4px}
+.ped-app .col-h .ic{color:var(--ink-2)}
+.ped-app .col-h h2{margin:0;font-size:13.5px;font-weight:600}
+.ped-app .badge{padding:0 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.ped-app .sum{margin-left:auto;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ped-app .empty{margin:6px 4px 10px;color:var(--muted);font-size:13px}
+.ped-app .card{padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.ped-app .card:hover{border-color:var(--line-strong)}
+.ped-app .card.is-late{box-shadow:inset 3px 0 0 var(--alert-solid)}
+.ped-app .c-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:18px}
+.ped-app .num{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.ped-app .urg{display:inline-flex;align-items:center;gap:6px;color:var(--alert);font-size:12px;font-weight:600;white-space:nowrap}
+.ped-app .urg::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.ped-app .urg.alta{color:var(--warn)}
+.ped-app .card h3{margin:2px 0 0;font-size:14.5px;font-weight:600;letter-spacing:-.005em}
+.ped-app .desc{margin:1px 0 0;color:var(--ink-2);overflow-wrap:anywhere}
+.ped-app .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--ink-2);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ped-app .meta span{display:inline-flex;align-items:center;gap:6px}
+.ped-app .meta .ic{width:14px;height:14px;color:var(--muted)}
+.ped-app .money{font-weight:600;color:var(--ink)}
+.ped-app .due{display:flex;align-items:center;gap:6px;margin-top:6px;color:var(--ink-2);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ped-app .due .ic{width:14px;height:14px;color:var(--muted)}
+.ped-app .due em{font-style:normal;font-weight:600}
+.ped-app .due.late,.ped-app .due.late .ic{color:var(--alert)}
+.ped-app .due.soon,.ped-app .due.soon .ic{color:var(--warn)}
+.ped-app .obs{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.ped-app .c-act{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.ped-app .ov{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,14,28,.55)}
+.ped-app .dlg{width:520px;max-width:100%;max-height:92vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.ped-app .dlg.sm{width:380px}
+.ped-app .dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 10px}
+.ped-app .dlg-h h2{margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.ped-app .dlg-h .sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.ped-app .dlg-b{padding:6px 22px 18px}
+.ped-app .dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--line)}
+.ped-app .dlg-f .grow{flex:1}
+.ped-app .x{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.ped-app .x:hover{background:var(--hover);color:var(--ink)}
+.ped-app .form{display:grid;gap:14px}
+.ped-app .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ped-app .f label{display:block;margin-bottom:5px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.ped-app .inp{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px}
+.ped-app textarea.inp{resize:vertical;min-height:60px}
+.ped-app .tabs2{display:flex;gap:4px;padding:0 22px;border-bottom:1px solid var(--line)}
+.ped-app .tab2{border:0;background:none;padding:9px 10px;font-weight:500;font-size:13.5px;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer}
+.ped-app .tab2[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--brand)}
+.ped-app .kv{display:flex;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+.ped-app .kv dt{width:104px;flex:none;color:var(--muted);font-size:12.5px}
+.ped-app .kv dd{margin:0;overflow-wrap:anywhere}
+.ped-app .kv dd.bad{color:var(--alert);font-weight:600}
+.ped-app .tl{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ped-app .tl i{width:8px;height:8px;margin-top:6px;border-radius:50%;background:var(--s3);flex:none}
+.ped-app .tl .tt{display:flex;justify-content:space-between;gap:10px}
+.ped-app .tl b{font-weight:600}
+.ped-app .tl small{color:var(--muted);font-size:12px}
+.ped-app .tl p{margin:2px 0 0;color:var(--ink-2)}
+.ped-app .fin{display:grid;grid-template-columns:repeat(3,1fr);margin:6px 0 4px;border:1px solid var(--line);border-radius:8px}
+.ped-app .fin div{padding:12px 14px;border-left:1px solid var(--line)}
+.ped-app .fin div:first-child{border-left:0}
+.ped-app .fin .n{display:block;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.ped-app .fin .t{color:var(--muted);font-size:12px}
+.ped-app .ss h4{display:flex;align-items:center;gap:8px;margin:18px 0 2px;font-size:13px;font-weight:600}
+.ped-app .ss.bad h4{color:var(--alert)}
+.ped-app .ss.soon h4{color:var(--warn)}
+.ped-app .ss-r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ped-app .ss-r small{display:block;color:var(--muted);font-size:12.5px}
+.ped-app .ss-r .tag{white-space:nowrap;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.ped-app .ss.bad .tag{color:var(--alert)}
+.ped-app .ss.soon .tag{color:var(--warn)}
+.ped-app .ss-ok{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:var(--col);color:var(--ok);font-weight:600}
+.ped-app .toast{position:fixed;right:22px;bottom:22px;z-index:900;display:flex;align-items:center;gap:8px;max-width:340px;padding:11px 16px;border-radius:8px;background:var(--brand);color:var(--brand-ink);font-weight:500;font-size:13.5px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+.ped-app .toast.err{background:var(--alert-solid);color:#fff}
+.ped-app .center{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:24px;text-align:center}
+.ped-app .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:820px){.ped-app .btn .t-btn{display:none}
+.ped-app .btn{padding:0 10px}
+.ped-app .row2{grid-template-columns:1fr}
+.ped-app .fin{grid-template-columns:1fr}
+.ped-app .fin div{border-left:0;border-top:1px solid var(--line)}
+.ped-app .fin div:first-child{border-top:0}}
+@media (prefers-reduced-motion:reduce){.ped-app *{transition:none!important;animation-duration:.01ms!important}}
+.ped-app .mod-wrap{max-width:900px;margin:0 auto;padding:32px 20px 60px}
+.ped-app .mod-head{margin:0 0 24px}
+.ped-app .mod-head h1{margin:0 0 4px;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.ped-app .mod-head p{margin:0;color:var(--muted);font-size:13.5px}
+.ped-app .mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.ped-app .mod-card{position:relative;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s,transform .1s;text-align:left;font:inherit;color:inherit}
+.ped-app .mod-card:hover{border-color:var(--line-strong)}
+.ped-app .mod-card:active{transform:scale(.99)}
+.ped-app .mod-card .mod-icon{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;margin-bottom:14px}
+.ped-app .mod-card .mod-icon .ic{width:22px;height:22px}
+.ped-app .mod-card h3{margin:0 0 3px;font-size:15.5px;font-weight:600}
+.ped-app .mod-card p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+.ped-app .mod-card .mod-count{position:absolute;top:16px;right:16px;min-width:28px;text-align:center;font-size:13px;font-weight:700;color:var(--ink);background:var(--col);padding:3px 10px;border-radius:20px;font-variant-numeric:tabular-nums}
+.ped-app .mod-card .mod-val{margin-top:10px;font-size:13px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.ped-app .mod-summary{display:flex;flex-wrap:wrap;gap:14px 28px;margin-bottom:24px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.ped-app .mod-summary .stat .n{display:block;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+.ped-app .mod-summary .stat .t{display:block;margin-top:2px;color:var(--muted);font-size:12.5px}
+.ped-app .back-btn{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;border:0;background:none;color:var(--accent);font-weight:500;font-size:13.5px;cursor:pointer;padding:4px 0}
+.ped-app .back-btn:hover{text-decoration:underline}
+.ped-app .rec-banner{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--alert-bg);border:1px solid var(--alert);border-radius:10px;color:var(--ink);font-size:13.5px}
+.ped-app .back-btn .ic{width:16px;height:16px}
+
+.ped-app{--alert-solid:#B42318;--s3:#566B94}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ped-app{--s3:#8497C4}}
+:root[data-theme="dark"] .ped-app{--s3:#8497C4}
+.ped-app .top{border-top:0;border-radius:12px;border:1px solid var(--line);margin:16px 20px 0}
+.ped-app .center{min-height:60vh}
+.ped-app .brand{cursor:pointer}
+@media (max-width:820px){.ped-app .top{margin:12px 12px 0;padding:12px 14px}.ped-app .wrap{padding:12px 12px 40px}.ped-app .mod-wrap{padding:20px 12px 40px}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+  <symbol id="i-trending" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></symbol>
+  <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+</svg>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useMemo} = React;
+
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBLIEql90vc_KqDCbTyflRKJEbWrC-fSjo",
+  authDomain:        "licitatrack.firebaseapp.com",
+  projectId:         "licitatrack",
+  storageBucket:     "licitatrack.firebasestorage.app",
+  messagingSenderId: "459723534294",
+  appId:             "1:459723534294:web:2e4ccc95565c6ef0c3be77"
+};
+let db = null;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(e) { console.error(e); }
+
+const PAINEL_URL = "./";
+
+function Icon({name, className}) {
+  return <svg className={className || "ic"} viewBox="0 0 24 24"><use href={"#i-" + name} /></svg>;
+}
+
+/* ── Header (padrão) ─────────────────────── */
+const ACTIVE = "pedidos";
+const NAV_ITEMS = [
+  {key:'index', nome:'Painel', icon:'grid', href:'index.html'},
+  {key:'contatos', nome:'Clientes', icon:'users', href:'contatos.html'},
+  {key:'vendas', nome:'Vendas', icon:'trending', href:'vendas.html'},
+  {key:'pedidos', nome:'Pedidos', icon:'package', href:'pedidos.html'},
+  {key:'financeiro', nome:'Financeiro', icon:'wallet', href:'financeiro.html'},
+  {key:'administrativo', nome:'Administrativo', icon:'building', href:'administrativo.html'},
+  {key:'estoque', nome:'Estoque', icon:'box', href:'estoque.html'},
+  {key:'licitacao', nome:'Licitação', icon:'gavel', href:'licitacao.html'},
+];
+function Sidebar() {
+  return (
+    <aside className="side">
+      <a href={PAINEL_URL} className="side-brand">
+        <img src="novari-icon.png" alt="Novari Print" />
+        <div><div className="nm">Novari Print</div><div className="sb">Gestão</div></div>
+      </a>
+      <nav className="nav">
+        {NAV_ITEMS.map(n => (
+          <a key={n.key} className={"navi" + (n.key===ACTIVE ? " active" : "")}
+             href={n.href} target={n.ext ? "_blank" : undefined} rel={n.ext ? "noopener" : undefined}>
+            <Icon name={n.icon} />{n.nome}
+          </a>
+        ))}
+        <div className="lab">Sistema</div>
+        <a className={"navi" + (ACTIVE==="lixeira" ? " active" : "")} href="lixeira.html"><Icon name="trash" />Lixeira</a>
+        <span className="navi soon"><Icon name="chart" />Relatórios</span>
+        <span className="navi soon"><Icon name="settings" />Configurações</span>
+      </nav>
+    </aside>
+  );
+}
+function toggleTheme(){
+  const r = document.documentElement;
+  let cur = r.getAttribute('data-theme');
+  if(!cur) cur = (window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches) ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  r.setAttribute('data-theme', next);
+  try{ localStorage.setItem('novari-theme', next); }catch(e){}
+}
+function Topbar() {
+  return (
+    <header className="topbar">
+      <div className="tb-search"><Icon name="search" /><input placeholder="Buscar…" aria-label="Buscar" /></div>
+      <div className="tb-sp"></div>
+      <button className="ib" onClick={toggleTheme} aria-label="Tema claro/escuro">
+        <svg className="ic theme-moon" viewBox="0 0 24 24"><use href="#i-moon"/></svg>
+        <svg className="ic theme-sun" viewBox="0 0 24 24"><use href="#i-sun"/></svg>
+      </button>
+      <button className="ib" onClick={() => firebase.auth().signOut()} aria-label="Sair" title="Sair"><Icon name="logout" /></button>
+      <button className="ib" aria-label="Notificações"><Icon name="bell" /><span className="dot"></span></button>
+      <button className="ib" aria-label="Ajuda"><Icon name="help" /></button>
+      <div className="tb-user">
+        <div className="tb-ava">NM</div>
+        <div><div className="un">Nicolas Monte</div><div className="ur">Administrador</div></div>
+      </div>
+    </header>
+  );
+}
+function Header() {
+  return (<React.Fragment><Sidebar /><Topbar /></React.Fragment>);
+}
+
+/* ── Pedidos (portado do app Pedidos) ─────────────── */
+
+const { useRef } = React;
+const IS_CFG = !!db;
+const COL = "pedidos";
+const LOGO_DATA_URI = "data:image/png;base64,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";
+
+/* ---------- Configuração ---------- */
+const DEFAULT_STAGES = [
+  { id:"proposta",  label:"Proposta Comercial", icon:"quote",   color:"#C9B27C", actLabel:"Aprovar e iniciar produção", group:"comercial" },
+  { id:"pendente",  label:"Pendente",           icon:"clock",   color:"#94A0B6", actLabel:"Iniciar confecção",          group:"pendente" },
+  { id:"confeccao", label:"Em confecção",       icon:"printer", color:"#6B7AA1", actLabel:"Enviar para entrega",        group:"producao" },
+  { id:"entrega",   label:"Em entrega",         icon:"truck",   color:"#48577E", actLabel:"Marcar como entregue",       group:"logistica" },
+  { id:"entregue",  label:"Entregue",           icon:"check",   color:"#14213D", actLabel:"",                           group:"logistica" },
+];
+/* Grupo (card) de uma etapa: usa o campo "group" salvo na etapa; se a etapa
+   ainda não tiver esse campo (dado antigo), cai para o padrão de fábrica
+   pelo id, ou por "fatur" no id/nome, senão fica em "Outros". */
+function groupOfStage(id, allStages) {
+  const s = (allStages || []).find(x => x.id === id);
+  if (s && s.group) return s.group;
+  const d = DEFAULT_STAGES.find(x => x.id === id);
+  if (d) return d.group;
+  if (/fatur/i.test(id) || (s && /fatur/i.test(s.label || ""))) return "faturamento";
+  return "";
+}
+const STAGE_PALETTE = ["#C9B27C", "#94A0B6", "#6B7AA1", "#48577E", "#14213D", "#B4534A", "#4F8A6A", "#7A5AA3"];
+const STAGE_ICONS = ["quote", "clock", "printer", "truck", "check", "file", "package", "alert", "user", "calendar"];
+const StagesCtx = React.createContext([]);
+function useStages() { return React.useContext(StagesCtx); }
+
+/* ---------- Configuração de campos ---------- */
+const DEFAULT_FIELDS = [
+  { key:"numero",      label:"Nº do processo ou licitação", type:"text",     visible:true },
+  { key:"quantidade",  label:"Quantidade",                  type:"number",   visible:true },
+  { key:"valorUnit",   label:"Valor do produto (R$)",        type:"number",   visible:true },
+  { key:"valor",       label:"Valor da licitação (R$)",       type:"number",   visible:true },
+  { key:"custo",       label:"Custo de produção (R$)",        type:"number",   visible:true },
+  { key:"frete",       label:"Frete (R$)",                    type:"number",   visible:true },
+  { key:"despesas",    label:"Outras despesas (R$)",          type:"number",   visible:true },
+  { key:"prazo",       label:"Prazo de entrega",              type:"date",     visible:true },
+  { key:"responsavel", label:"Responsável ou fornecedor",     type:"text",     visible:true },
+  { key:"prioridade",  label:"Prioridade",                    type:"select",   visible:true },
+  { key:"observacoes", label:"Observações",                   type:"textarea", visible:true },
+];
+const FIELD_TYPES = [
+  { id:"text",     label:"Texto curto" },
+  { id:"textarea", label:"Texto longo" },
+  { id:"number",   label:"Número" },
+  { id:"date",     label:"Data" },
+];
+const FieldsCtx = React.createContext(DEFAULT_FIELDS);
+function useFields() { return React.useContext(FieldsCtx); }
+function fieldLabel(key, fields, fallback) { const f = (fields || DEFAULT_FIELDS).find(x => x.key === key); return f ? f.label : (fallback || key); }
+function fieldVisible(key, fields) { const f = (fields || DEFAULT_FIELDS).find(x => x.key === key); return f ? f.visible !== false : true; }
+const PRIORITIES = [
+  { id:"urgente", label:"Urgente" },
+  { id:"alta",    label:"Alta" },
+  { id:"media",   label:"Média" },
+  { id:"baixa",   label:"Baixa" },
+];
+
+const ICONS = {
+  plus:<><path d="M5 12h14"/><path d="M12 5v14"/></>,
+  search:<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+  calendar:<><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></>,
+  clock:<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+  printer:<><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></>,
+  truck:<><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></>,
+  check:<><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>,
+  alert:<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></>,
+  file:<><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></>,
+  quote:<><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/></>,
+  sheet:<><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></>,
+  save:<><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></>,
+  upload:<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>,
+  pencil:<><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></>,
+  trash:<><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></>,
+  package:<><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></>,
+  back:<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>,
+  user:<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+  x:<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+  settings:<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>,
+  up:<polyline points="18 15 12 9 6 15"/>,
+  down:<polyline points="6 9 12 15 18 9"/>,
+  layout:<><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></>,
+  receipt:<><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></>,
+  home:<><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></>,
+  logout:<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
+};
+function Ic({ n }) {
+  return <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">{ICONS[n]}</svg>;
+}
+
+/* ---------- Utilidades ---------- */
+function uid() { return "PED-" + Date.now().toString().slice(-7); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function formatDate(s) { return s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—"; }
+function formatDT(s) {
+  if (!s) return "—";
+  const d = new Date(s);
+  return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+function formatBRL(v) {
+  if (v === "" || v == null || isNaN(Number(v))) return "—";
+  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+function dayDiff(p) {
+  if (!p) return null;
+  const [y, m, d] = p.split("-").map(Number);
+  const t = new Date();
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / 864e5);
+}
+function isOverdue(o) { const d = dayDiff(o.prazo); return d !== null && d < 0 && o.status !== "entregue"; }
+function dueInfo(o) {
+  const d = dayDiff(o.prazo);
+  if (d === null) return null;
+  const t = formatDate(o.prazo);
+  if (o.status === "entregue") return { k: "ok", t, r: "" };
+  if (d < 0) return { k: "late", t, r: (-d) + (d === -1 ? " dia" : " dias") + " de atraso" };
+  if (d === 0) return { k: "soon", t, r: "vence hoje" };
+  if (d === 1) return { k: "soon", t, r: "vence amanhã" };
+  if (d <= 3) return { k: "soon", t, r: "em " + d + " dias" };
+  return { k: "ok", t, r: "" };
+}
+function tidy(s) {
+  const t = String(s == null ? "" : s);
+  return t && t === t.toUpperCase() && t !== t.toLowerCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t;
+}
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function sumVal(list) { return list.reduce((s, o) => s + (Number(o.valor) || 0), 0); }
+function hasCusto(o) { return o.custo !== undefined && o.custo !== null && o.custo !== ""; }
+function custoTotal(o) { return (Number(o.custo) || 0) + (Number(o.frete) || 0) + (Number(o.despesas) || 0); }
+function lucro(o) { return (Number(o.valor) || 0) - custoTotal(o); }
+function margem(o) { const v = Number(o.valor) || 0; return v > 0 ? (lucro(o) / v) * 100 : null; }
+function byPrazo(a, b) {
+  if (!a.prazo && !b.prazo) return 0;
+  if (!a.prazo) return 1;
+  if (!b.prazo) return -1;
+  return a.prazo < b.prazo ? -1 : a.prazo > b.prazo ? 1 : 0;
+}
+function pushHistory(order, acao, detalhes) {
+  return { ...order, historico: [...(order.historico || []), { data: new Date().toISOString(), acao, detalhes }] };
+}
+function stageLabel(id, stages) { const s = (stages || DEFAULT_STAGES).find(x => x.id === id); return s ? s.label : id; }
+function download(blob, name) {
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- Módulos (agrupamento visual) ---------- */
+const MODULE_GROUPS = [
+  { key:"pendente",    nome:"Pendente",    desc:"Aguardando entrada em produção",       icon:"clock",    bg:"#FDECEC", fg:"#CE1B21", match: (id, stages) => groupOfStage(id, stages) === "pendente" },
+  { key:"producao",    nome:"Produção",    desc:"Pedidos em confecção",                  icon:"settings", bg:"#EAF5FC", fg:"#1D6FA5", match: (id, stages) => groupOfStage(id, stages) === "producao" },
+  { key:"faturamento", nome:"Faturamento", desc:"Faturamento e pedidos faturados",       icon:"receipt",  bg:"#F5F3FF", fg:"#5B21B6", match: (id, stages) => groupOfStage(id, stages) === "faturamento" },
+  { key:"logistica",   nome:"Logística",   desc:"Em entrega e entregues",               icon:"truck",    bg:"#D7F7E6", fg:"#067647", match: (id, stages) => groupOfStage(id, stages) === "logistica" },
+];
+function getModuleStages(moduleKey, allStages) {
+  const mod = MODULE_GROUPS.find(m => m.key === moduleKey);
+  if (!mod) return allStages;
+  return allStages.filter(s => mod.match(s.id, allStages));
+}
+function getUnmatchedStages(allStages) {
+  return allStages.filter(s => !MODULE_GROUPS.some(m => m.match(s.id, allStages)));
+}
+
+/* ---------- Aplicativo ---------- */
+function PedidosApp() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [connErr, setConnErr] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [detailId, setDetailId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [fStage, setFStage] = useState("todos");
+  const [fPrio, setFPrio] = useState("all");
+  const [toast, setToast] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [restorePend, setRestorePend] = useState(null);
+  const [showSum, setShowSum] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [stagesRaw, setStagesRaw] = useState(DEFAULT_STAGES);
+  const [showStages, setShowStages] = useState(false);
+  const [stagesLoaded, setStagesLoaded] = useState(false);
+  const [showRecover, setShowRecover] = useState(false);
+  const [fieldsRaw, setFieldsRaw] = useState(DEFAULT_FIELDS);
+  const [showFields, setShowFields] = useState(false);
+  const [view, setView] = useState("modules"); // "modules" or module key
+  const fileRef = useRef(null);
+
+  const stagesFlow = React.useMemo(() => stagesRaw.map((s, i) => ({
+    ...s,
+    next: stagesRaw[i + 1] ? stagesRaw[i + 1].id : null,
+    prev: i > 0 ? stagesRaw[i - 1].id : null,
+    actText: s.actLabel || (stagesRaw[i + 1] ? ("Avançar para " + stagesRaw[i + 1].label) : null),
+  })), [stagesRaw]);
+
+  useEffect(() => {
+    if (!IS_CFG) { setLoading(false); setConnErr("Não foi possível iniciar o Firebase."); return; }
+    const unsub = db.collection(COL).onSnapshot(
+      snap => {
+        // Sem orderBy no servidor: pedidos sem "criadoEm" também aparecem. Ordena aqui, do mais antigo ao mais novo.
+        const lista = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(o => !o.excluido);
+        lista.sort((a, b) => String(a.criadoEm || "").localeCompare(String(b.criadoEm || "")));
+        setOrders(lista); setLoading(false); setConnErr(null);
+      },
+      err => { setConnErr(err.message); setLoading(false); }
+    );
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!IS_CFG) return;
+    const unsub = db.collection("config").doc("stages").onSnapshot(
+      doc => {
+        if (doc.exists && Array.isArray(doc.data().list) && doc.data().list.length) {
+          setStagesRaw(doc.data().list);
+          setStagesLoaded(true);
+        } else {
+          setStagesRaw(DEFAULT_STAGES);
+          // Sem gravação automática: os padrões ficam só em memória até o usuário salvar em "Etapas".
+        }
+      },
+      err => { setStagesRaw(DEFAULT_STAGES); setConnErr("Não foi possível ler as etapas: " + err.message); }
+    );
+    return unsub;
+  }, []);
+
+  async function saveStages(list) {
+    await db.collection("config").doc("stages").set({ list, updatedAt: new Date().toISOString() });
+    flash("Etapas atualizadas.");
+  }
+
+  useEffect(() => {
+    if (!IS_CFG) return;
+    const unsub = db.collection("config").doc("fields").onSnapshot(
+      doc => {
+        if (doc.exists && Array.isArray(doc.data().list) && doc.data().list.length) {
+          setFieldsRaw(doc.data().list);
+        } else {
+          setFieldsRaw(DEFAULT_FIELDS);
+          // Sem gravação automática: os padrões ficam só em memória até o usuário salvar em "Campos".
+        }
+      },
+      () => setFieldsRaw(DEFAULT_FIELDS)
+    );
+    return unsub;
+  }, []);
+
+  async function saveFields(list) {
+    await db.collection("config").doc("fields").set({ list, updatedAt: new Date().toISOString() });
+    flash("Campos atualizados.");
+  }
+
+  useEffect(() => {
+    if (loading || connErr) return;
+    try {
+      if (localStorage.getItem("lt-summary") !== todayStr()) {
+        setShowSum(true);
+        localStorage.setItem("lt-summary", todayStr());
+      }
+    } catch (e) {}
+  }, [loading]);
+
+  function flash(msg, type) {
+    setToast({ msg, type: type || "ok" });
+    setTimeout(() => setToast(null), 3000);
+  }
+  async function fbSet(order) {
+    setSaving(true);
+    try { await db.collection(COL).doc(order.id).set(order, { merge: true }); }
+    catch (e) { flash("Erro ao salvar: " + e.message, "err"); }
+    finally { setSaving(false); }
+  }
+  async function fbDel(id) {
+    // Exclusão reversível: o pedido vai para a Lixeira do CRM (lixeira.html) em vez de ser apagado.
+    try { await db.collection(COL).doc(id).update({ excluido: true, excluidoEm: firebase.firestore.FieldValue.serverTimestamp(), excluidoPor: ((firebase.auth().currentUser || {}).email) || "" }); }
+    catch (e) { flash("Erro ao excluir: " + e.message, "err"); }
+  }
+
+  function openAdd() {
+    // Pula etapas do grupo "comercial" (propostas/orçamentos agora são feitos em Vendas),
+    // pra um pedido novo nunca nascer sem card visível no painel.
+    const usable = stagesRaw.find(s => groupOfStage(s.id, stagesRaw) !== "comercial");
+    const defaultStatus = (usable || stagesRaw[0] || {}).id || "pendente";
+    setForm({ numero: "", cliente: "", descricao: "", quantidade: "", valorUnit: "", valor: "", custo: "", frete: "", despesas: "", prazo: "", status: defaultStatus, prioridade: "media", responsavel: "", observacoes: "", extras: {} });
+    setModal("add");
+  }
+  function openEdit(o) { setForm({ ...o }); setModal("edit"); }
+  function openDetail(o) { setDetailId(o.id); setModal("detail"); }
+
+  async function handleSave() {
+    if (!form.cliente || !form.cliente.trim() || !form.descricao || !form.descricao.trim()) {
+      flash("Preencha o cliente e a descrição.", "err"); return;
+    }
+    let updated;
+    if (modal === "add") {
+      updated = pushHistory({ ...form, id: uid(), criadoEm: new Date().toISOString(), historico: [] }, "Criado", "Pedido adicionado ao sistema");
+      flash("Pedido criado.");
+    } else {
+      const old = orders.find(o => o.id === form.id) || {};
+      const ch = [];
+      if (old.status !== form.status) ch.push("Etapa: " + stageLabel(old.status, stagesRaw) + " → " + stageLabel(form.status, stagesRaw));
+      if (old.prazo !== form.prazo) ch.push("Prazo alterado");
+      if (old.valor !== form.valor) ch.push("Valor alterado");
+      if (old.quantidade !== form.quantidade) ch.push("Quantidade alterada");
+      if (old.valorUnit !== form.valorUnit) ch.push("Valor do produto alterado");
+      if (old.prioridade !== form.prioridade) ch.push("Prioridade alterada");
+      if (old.responsavel !== form.responsavel) ch.push("Responsável alterado");
+      if (old.observacoes !== form.observacoes) ch.push("Observações alteradas");
+      if (old.custo !== form.custo || old.frete !== form.frete || old.despesas !== form.despesas) ch.push("Custos atualizados");
+      updated = pushHistory({ ...form }, "Editado", ch.length ? ch.join(" · ") : "Campos atualizados");
+      flash("Pedido atualizado.");
+    }
+    setModal(null);
+    await fbSet(updated);
+  }
+  async function handleDelete(id) {
+    setModal(null); setConfirmDel(null);
+    await fbDel(id);
+    flash("Pedido movido para a lixeira.");
+  }
+  async function moveTo(o, to) {
+    await fbSet(pushHistory({ ...o, status: to }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(to, stagesRaw)));
+    flash("Pedido movido para " + stageLabel(to, stagesRaw).toLowerCase() + ".");
+  }
+
+  function exportCSV() {
+    const customFields = fieldsRaw.filter(f => !DEFAULT_FIELDS.some(d => d.key === f.key));
+    const h = ["ID", fieldLabel("numero", fieldsRaw), "Cliente", "Descrição", fieldLabel("quantidade", fieldsRaw),
+      fieldLabel("valorUnit", fieldsRaw), fieldLabel("valor", fieldsRaw), fieldLabel("custo", fieldsRaw), fieldLabel("frete", fieldsRaw),
+      fieldLabel("despesas", fieldsRaw), "Lucro (R$)", "Margem (%)", fieldLabel("prazo", fieldsRaw), "Etapa",
+      fieldLabel("prioridade", fieldsRaw), fieldLabel("responsavel", fieldsRaw), fieldLabel("observacoes", fieldsRaw), "Criado em",
+      ...customFields.map(f => f.label)];
+    const rows = orders.map(o => [
+      o.id, o.numero || "", o.cliente, o.descricao, o.quantidade || "", o.valorUnit || "", o.valor || "",
+      o.custo || "", o.frete || "", o.despesas || "",
+      hasCusto(o) ? lucro(o).toFixed(2) : "", hasCusto(o) && margem(o) !== null ? margem(o).toFixed(1) : "",
+      o.prazo ? formatDate(o.prazo) : "", stageLabel(o.status, stagesRaw),
+      (PRIORITIES.find(p => p.id === o.prioridade) || {}).label || o.prioridade || "",
+      o.responsavel || "", o.observacoes || "", o.criadoEm ? new Date(o.criadoEm).toLocaleDateString("pt-BR") : "",
+      ...customFields.map(f => (o.extras && o.extras[f.key]) || "")
+    ].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(","));
+    download(new Blob(["\uFEFF" + [h.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8;" }), "pedidos-" + todayStr() + ".csv");
+    flash("Planilha exportada.");
+  }
+
+  function exportPDF() {
+    const lateN = orders.filter(isOverdue).length;
+    const now = new Date();
+    const sections = stagesRaw.map(s => {
+      const items = orders.filter(o => o.status === s.id).sort(byPrazo);
+      if (!items.length) return "";
+      const v = sumVal(items);
+      const rows = items.map(o => {
+        const late = isOverdue(o);
+        return "<tr><td>" + esc(o.numero || o.id) + "</td><td><b>" + esc(o.cliente) + "</b></td><td>" + esc(tidy(o.descricao)) +
+          "</td><td class='r'>" + esc(o.quantidade ? Number(o.quantidade).toLocaleString("pt-BR") : "—") +
+          "</td><td class='r'>" + esc(o.valor ? formatBRL(o.valor) : "—") +
+          "</td><td class='r" + (hasCusto(o) && lucro(o) < 0 ? " late" : "") + "'>" + esc(hasCusto(o) ? formatBRL(lucro(o)) : "—") +
+          "</td><td class='" + (late ? "late" : "") + "'>" + esc(formatDate(o.prazo)) +
+          "</td><td>" + esc(o.observacoes ? tidy(o.observacoes) : "—") + "</td></tr>";
+      }).join("");
+      return "<div class='sec-h'><h4>" + s.label + "</h4><span>" + items.length + (items.length === 1 ? " pedido" : " pedidos") + "</span>" +
+        (v > 0 ? "<span>" + formatBRL(v) + "</span>" : "") + "</div>" +
+        "<table><thead><tr><th>Nº</th><th>Cliente</th><th>Descrição</th><th class='r'>Qtd</th><th class='r'>Valor</th><th class='r'>Lucro</th><th>Prazo</th><th>Observações</th></tr></thead><tbody>" + rows + "</tbody></table>";
+    }).join("");
+    const comCustoPDF = orders.filter(hasCusto);
+    const lucroTotalPDF = comCustoPDF.reduce((s, o) => s + lucro(o), 0);
+    const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'><title>Relatório de pedidos — Novari Print</title>" +
+      "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>" +
+      "<style>@page{margin:14mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+      "body{margin:0;padding:24px;font:11.5px/1.45 Inter,Arial,sans-serif;color:#111B33}" +
+      ".topbar{height:3px;background:#CE1B21;margin:-24px -24px 20px}" +
+      ".lh{display:flex;justify-content:space-between;gap:24px;padding-bottom:14px;border-bottom:2px solid #151F38}" +
+      ".lh-l{display:flex;gap:14px;align-items:center}" +
+      ".logo-pdf{height:44px;width:auto;display:block}" +
+      ".nm{font-weight:700;font-size:16px;line-height:1.2}.sb{color:#5B6680;font-size:11px;line-height:1.5}" +
+      ".lh-r{text-align:right}.tt{font-weight:700;font-size:16px}.dt{color:#5B6680;font-size:11.5px}" +
+      ".sr{display:flex;margin:18px 0 4px}.sr div{padding:0 24px;border-left:1px solid #DDE2EA}.sr div:first-child{padding-left:0;border-left:0}" +
+      ".sr .n{display:block;font-size:19px;font-weight:700}.sr .t{color:#5B6680;font-size:11px}.sr .bad .n{color:#B42318}" +
+      ".sec-h{display:flex;align-items:baseline;gap:10px;margin:22px 0 5px;break-after:avoid}.sec-h h4{margin:0;font-size:13px}.sec-h span{color:#5B6680;font-size:11.5px}" +
+      "table{width:100%;border-collapse:collapse}thead{display:table-header-group}tr{break-inside:avoid}" +
+      "th{padding:6px 7px;text-align:left;font-weight:600;color:#5B6680;border-bottom:1px solid #111B33;white-space:nowrap}" +
+      "td{padding:7px;border-bottom:1px solid #DDE2EA;vertical-align:top}.r{text-align:right}.late{color:#B42318;font-weight:600}" +
+      ".pf{display:flex;justify-content:space-between;margin-top:26px;padding-top:8px;border-top:1px solid #DDE2EA;color:#5B6680;font-size:10.5px}" +
+      "</style></head><body>" +
+      "<div class='topbar'></div>" +
+      "<div class='lh'><div class='lh-l'><img class='logo-pdf' src='" + LOGO_DATA_URI + "' alt='Novari Print'><div><div class='nm'>Novari Print</div>" +
+      "<div class='sb'>Novari Print Comércio de Papelaria e Serviços Gráficos Ltda.<br>CNPJ 16.943.709/0001-60</div></div></div>" +
+      "<div class='lh-r'><div class='tt'>Relatório de pedidos</div><div class='dt'>Emitido em " + now.toLocaleDateString("pt-BR") + " às " + now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + "</div></div></div>" +
+      "<div class='sr'><div><span class='n'>" + orders.length + "</span><span class='t'>pedidos</span></div>" +
+      "<div><span class='n'>" + formatBRL(sumVal(orders)) + "</span><span class='t'>em carteira</span></div>" +
+      "<div class='" + (lateN ? "bad" : "") + "'><span class='n'>" + lateN + "</span><span class='t'>atrasados</span></div>" +
+      "<div><span class='n'>" + orders.filter(o => o.status === "entregue").length + "</span><span class='t'>entregues</span></div>" +
+      (comCustoPDF.length > 0 ? "<div class='" + (lucroTotalPDF < 0 ? "bad" : "") + "'><span class='n'>" + formatBRL(lucroTotalPDF) + "</span><span class='t'>lucro (" + comCustoPDF.length + " pedidos)</span></div>" : "") +
+      "</div>" +
+      sections +
+      "<div class='pf'><span>Novari Print</span><span>Gerado pelo LicitaTrack</span></div>" +
+      "<script>window.addEventListener('load',function(){setTimeout(function(){window.print()},300)})<\/script></body></html>";
+    const win = window.open("", "_blank");
+    if (!win) { flash("Permita pop-ups neste site para gerar o PDF.", "err"); return; }
+    win.document.write(html);
+    win.document.close();
+  }
+
+  function downloadBackup() {
+    download(new Blob([JSON.stringify({ versao: "firebase-v1", exportadoEm: new Date().toISOString(), pedidos: orders }, null, 2)], { type: "application/json" }), "backup-" + todayStr() + ".json");
+    flash("Backup salvo.");
+  }
+  async function handleRestore(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      const list = Array.isArray(data) ? data : data.pedidos;
+      if (!Array.isArray(list) || list.some(o => !o || !o.id)) throw new Error("formato");
+      // Nada é gravado agora: o usuário precisa confirmar na janela abaixo.
+      const existentes = list.filter(o => orders.some(x => x.id === o.id)).length;
+      setRestorePend({ list, nome: file.name, existentes });
+    } catch (err) { flash("Arquivo de backup inválido.", "err"); }
+    e.target.value = "";
+  }
+  async function confirmRestore() {
+    const list = restorePend.list;
+    setRestorePend(null);
+    try {
+      for (let i = 0; i < list.length; i += 400) {
+        const batch = db.batch();
+        list.slice(i, i + 400).forEach(o => batch.set(db.collection(COL).doc(o.id), o, { merge: true }));
+        await batch.commit();
+      }
+      flash(list.length + " pedidos restaurados.");
+    } catch (err) { flash("Erro ao restaurar: " + err.message, "err"); }
+  }
+
+  /* ----- Derivados ----- */
+  const q = search.trim().toLowerCase();
+  const visible = orders.filter(o =>
+    (fPrio === "all" || o.prioridade === fPrio) &&
+    (!q || [o.cliente, o.descricao, o.numero, o.id, o.responsavel, o.observacoes].some(f => f && String(f).toLowerCase().includes(q)))
+  );
+  const stageList = id => {
+    const l = visible.filter(o => o.status === id).sort(byPrazo);
+    const isTerminal = !stagesFlow.find(s => s.id === id)?.next;
+    return isTerminal ? l.reverse() : l;
+  };
+  const counts = {};
+  stagesRaw.forEach(s => { counts[s.id] = orders.filter(o => o.status === s.id).length; });
+  const lateCount = orders.filter(isOverdue).length;
+  const shown = stagesRaw.filter(s => fStage === "todos" || fStage === s.id).reduce((n, s) => n + stageList(s.id).length, 0);
+  const detailOrder = detailId ? orders.find(o => o.id === detailId) : null;
+
+  if (loading) return <div className="center"><div className="spin"></div><p style={{ color: "var(--muted)" }}>Conectando ao Firebase…</p></div>;
+  if (connErr) return (
+    <div className="center">
+      <h2 style={{ margin: 0 }}>Não foi possível carregar os pedidos</h2>
+      <p style={{ color: "var(--ink-2)", maxWidth: 420, margin: 0 }}>{connErr}</p>
+      <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Confira a conexão com a internet e as regras do Firestore.</p>
+      <button className="btn primary" onClick={() => location.reload()}>Tentar novamente</button>
+    </div>
+  );
+
+  /* ----- Módulos: dados por grupo ----- */
+  const activeModule = view !== "modules" ? MODULE_GROUPS.find(m => m.key === view) : null;
+  const viewStages = activeModule ? getModuleStages(view, stagesRaw) : stagesRaw;
+  const viewStagesFlow = activeModule ? stagesFlow.filter(s => activeModule.match(s.id, stagesRaw)) : stagesFlow;
+  const moduleOrderCount = (mod) => orders.filter(o => mod.match(o.status, stagesRaw)).length;
+  const moduleOrderVal = (mod) => sumVal(orders.filter(o => mod.match(o.status, stagesRaw)));
+  const moduleLateCount = (mod) => orders.filter(o => mod.match(o.status, stagesRaw) && isOverdue(o)).length;
+  const unmatchedStages = getUnmatchedStages(stagesRaw);
+  const orphanOrders = stagesLoaded ? orders.filter(o => o.status && !stagesRaw.some(s => s.id === o.status)) : [];
+  const unmatchedCount = orders.filter(o => unmatchedStages.some(s => s.id === o.status)).length;
+
+  return (
+    <StagesCtx.Provider value={stagesFlow}>
+    <FieldsCtx.Provider value={fieldsRaw}>
+
+      <header className="top">
+        <div className="brand" onClick={() => { setView("modules"); setFStage("todos"); setSearch(""); setFPrio("all"); }} title="Voltar aos módulos">
+          <div>
+            <div className="brand-name">Pedidos</div>
+            <div className="brand-sub">{view === "modules" ? "Módulos e etapas" : "Voltar aos módulos"}</div>
+          </div>
+        </div>
+        <div className="actions">
+          <span className={"sync" + (saving ? " busy" : "")}><i></i>{saving ? "Salvando…" : "Sincronizado"}</span>
+          {view !== "modules" && <>
+            <button className="btn" onClick={() => setShowStages(true)} title="Gerenciar etapas"><Ic n="settings" /><span className="t-btn">Etapas</span></button>
+            <button className="btn" onClick={() => setShowFields(true)} title="Gerenciar campos"><Ic n="layout" /><span className="t-btn">Campos</span></button>
+          </>}
+          <button className="btn" onClick={() => setShowSum(true)} title="Resumo do dia"><Ic n="calendar" /><span className="t-btn">Resumo</span></button>
+          <button className="btn" onClick={exportCSV} title="Exportar planilha (CSV)"><Ic n="sheet" /><span className="t-btn">Planilha</span></button>
+          <button className="btn" onClick={exportPDF} title="Gerar relatório em PDF"><Ic n="file" /><span className="t-btn">Relatório PDF</span></button>
+          <button className="btn" onClick={downloadBackup} title="Salvar backup"><Ic n="save" /><span className="t-btn">Backup</span></button>
+          <button className="btn" onClick={() => fileRef.current && fileRef.current.click()} title="Restaurar backup"><Ic n="upload" /><span className="t-btn">Restaurar</span></button>
+          <input ref={fileRef} type="file" accept=".json" onChange={handleRestore} style={{ display: "none" }} />
+          <button className="btn primary" onClick={openAdd}><Ic n="plus" />Novo pedido</button>
+        </div>
+      </header>
+
+      {view === "modules" ? (
+        /* ---------- Tela de módulos ---------- */
+        <main className="mod-wrap">
+          <div className="mod-head">
+            <h1>Pedidos</h1>
+            <p>Selecione um módulo para gerenciar seus pedidos.</p>
+          </div>
+
+          {orphanOrders.length > 0 && (
+            <div className="rec-banner">
+              <div><b>{orphanOrders.length} pedido{orphanOrders.length > 1 ? "s" : ""} em etapa que não existe mais na configuração.</b> Os pedidos estão salvos e intactos — só falta recriar a etapa deles.</div>
+              <button className="btn primary" onClick={() => setShowRecover(true)}>Recuperar etapas</button>
+            </div>
+          )}
+          <div className="mod-summary">
+            <div className="stat"><span className="n">{orders.length}</span><span className="t">pedidos no total</span></div>
+            <div className="stat"><span className="n">{formatBRL(sumVal(orders))}</span><span className="t">em carteira</span></div>
+            {lateCount > 0
+              ? <div className="stat"><span className="n" style={{color:"var(--alert)"}}>{lateCount}</span><span className="t">{lateCount === 1 ? "atrasado" : "atrasados"}</span></div>
+              : <div className="stat"><span className="n" style={{color:"var(--ok)"}}>0</span><span className="t">atrasados</span></div>}
+          </div>
+
+          <div className="mod-grid">
+            {MODULE_GROUPS.map(m => {
+              const cnt = moduleOrderCount(m);
+              const val = moduleOrderVal(m);
+              const late = moduleLateCount(m);
+              return (
+                <button key={m.key} className="mod-card" onClick={() => { setView(m.key); setFStage("todos"); setSearch(""); setFPrio("all"); }}>
+                  <span className="mod-count">{cnt}</span>
+                  <div className="mod-icon" style={{background:m.bg, color:m.fg}}><Ic n={m.icon} /></div>
+                  <h3>{m.nome}</h3>
+                  <p>{m.desc}</p>
+                  {val > 0 && <div className="mod-val">{formatBRL(val)}</div>}
+                  {late > 0 && <div style={{marginTop:4,fontSize:12,color:"var(--alert)",fontWeight:600}}><Ic n="alert" style={{width:12,height:12,verticalAlign:-2,marginRight:4}} />{late} {late === 1 ? "atrasado" : "atrasados"}</div>}
+                </button>
+              );
+            })}
+            {unmatchedCount > 0 && (
+              <button className="mod-card" onClick={() => { setView("outros"); setFStage("todos"); setSearch(""); setFPrio("all"); }}>
+                <span className="mod-count">{unmatchedCount}</span>
+                <div className="mod-icon" style={{background:"var(--col)", color:"var(--muted)"}}><Ic n="package" /></div>
+                <h3>Outros</h3>
+                <p>Etapas personalizadas</p>
+              </button>
+            )}
+          </div>
+        </main>
+      ) : (
+        /* ---------- Kanban filtrado por módulo ---------- */
+        <main className="wrap">
+          <button className="back-btn" onClick={() => { setView("modules"); setFStage("todos"); setSearch(""); setFPrio("all"); }}>
+            <Ic n="back" /> Voltar aos módulos
+          </button>
+
+          <section className="pano" aria-label="Panorama dos pedidos">
+            <div className="pano-head">
+              {activeModule && <div style={{display:"flex",alignItems:"center",gap:10,marginRight:20}}>
+                <div className="mod-icon" style={{background:activeModule.bg, color:activeModule.fg, width:36,height:36,borderRadius:8,display:"grid",placeItems:"center"}}><Ic n={activeModule.icon} /></div>
+                <div style={{fontWeight:700,fontSize:17}}>{activeModule.nome}</div>
+              </div>}
+              <div className="stat"><span className="n">{(view === "outros" ? unmatchedStages : viewStages).reduce((n,s) => n + (counts[s.id]||0), 0)}</span><span className="t">pedidos</span></div>
+              <div className="stat"><span className="n">{formatBRL(sumVal(orders.filter(o => (view === "outros" ? unmatchedStages : viewStages).some(s => s.id === o.status))))}</span><span className="t">em carteira</span></div>
+              {(() => {
+                const modLate = orders.filter(o => (view === "outros" ? unmatchedStages : viewStages).some(s => s.id === o.status) && isOverdue(o)).length;
+                return modLate > 0
+                  ? <div className="late-pill"><Ic n="alert" />{modLate} {modLate === 1 ? "atrasado" : "atrasados"}</div>
+                  : <div className="ok-pill"><Ic n="check" />Sem atrasos</div>;
+              })()}
+            </div>
+            {orders.length > 0 && (
+              <div className="bar" role="img" aria-label={(view === "outros" ? unmatchedStages : viewStages).map(s => (counts[s.id]||0) + " " + s.label.toLowerCase()).join(", ")}>
+                {(view === "outros" ? unmatchedStages : viewStages).filter(s => (counts[s.id]||0) > 0).map(s => <i key={s.id} style={{ flex: counts[s.id], background: s.color }}></i>)}
+              </div>
+            )}
+            <div className="legend">
+              <button className="chip" aria-pressed={fStage === "todos"} onClick={() => setFStage("todos")}>Todos <b>{(view === "outros" ? unmatchedStages : viewStages).reduce((n,s) => n + (counts[s.id]||0), 0)}</b></button>
+              {(view === "outros" ? unmatchedStages : viewStages).map(s => (
+                <button key={s.id} className="chip" aria-pressed={fStage === s.id} onClick={() => setFStage(fStage === s.id ? "todos" : s.id)}>
+                  <span className="sw" style={{ background: s.color }}></span>{s.label} <b>{counts[s.id]||0}</b>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div className="tools">
+            <div className="search">
+              <Ic n="search" />
+              <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por cliente, número, descrição ou responsável" aria-label="Buscar pedidos" />
+            </div>
+            <select className="sel" value={fPrio} onChange={e => setFPrio(e.target.value)} aria-label="Filtrar por prioridade">
+              <option value="all">Todas as prioridades</option>
+              {PRIORITIES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </select>
+            {(search || fPrio !== "all") && <button className="btn" onClick={() => { setSearch(""); setFPrio("all"); }}>Limpar filtros</button>}
+            <span className="count">Mostrando {shown} de {orders.length} pedidos</span>
+          </div>
+
+          <div className="board">
+            {(view === "outros" ? stagesFlow.filter(s => unmatchedStages.some(u => u.id === s.id)) : viewStagesFlow).filter(s => fStage === "todos" || fStage === s.id).map(s => {
+              const list = stageList(s.id);
+              const v = sumVal(list);
+              return (
+                <section className="col" key={s.id}>
+                  <div className="col-h">
+                    <Ic n={s.icon} /><h2>{s.label}</h2><span className="badge">{list.length}</span>
+                    {v > 0 && <span className="sum">{formatBRL(v)}</span>}
+                  </div>
+                  {list.length === 0 && <p className="empty">Nenhum pedido nesta etapa.</p>}
+                  {list.map(o => (
+                    <OrderCard key={o.id} o={o} stage={s}
+                      onOpen={() => openDetail(o)} onEdit={() => openEdit(o)} onDel={() => setConfirmDel(o.id)}
+                      onNext={() => s.next && moveTo(o, s.next)} onPrev={() => s.prev && moveTo(o, s.prev)} />
+                  ))}
+                </section>
+              );
+            })}
+          </div>
+        </main>
+      )}
+
+      {showSum && <Overlay onClose={() => setShowSum(false)}><DailySummary orders={orders} onClose={() => setShowSum(false)} /></Overlay>}
+      {showRecover && <Overlay onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
+      {showStages && <Overlay onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
+      {showFields && <Overlay onClose={() => setShowFields(false)}><FieldsManager fields={fieldsRaw} onClose={() => setShowFields(false)} onSave={saveFields} /></Overlay>}
+
+      {(modal === "add" || modal === "edit") && (
+        <Overlay onClose={() => setModal(null)}>
+          <div className="dlg" role="dialog" aria-modal="true" aria-label={modal === "add" ? "Novo pedido" : "Editar pedido"}>
+            <div className="dlg-h">
+              <h2>{modal === "add" ? "Novo pedido" : "Editar pedido"}</h2>
+              <button className="x" onClick={() => setModal(null)} aria-label="Fechar"><Ic n="x" /></button>
+            </div>
+            <div className="dlg-b"><FormBody form={form} setForm={setForm} /></div>
+            <div className="dlg-f">
+              <button className="btn" onClick={() => setModal(null)}>Cancelar</button>
+              <button className="btn primary" onClick={handleSave}>{modal === "add" ? "Criar pedido" : "Salvar alterações"}</button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {modal === "detail" && detailOrder && (
+        <Overlay onClose={() => setModal(null)}>
+          <DetailPanel o={detailOrder} onClose={() => setModal(null)} onEdit={() => openEdit(detailOrder)} onDelete={() => setConfirmDel(detailOrder.id)} />
+        </Overlay>
+      )}
+
+      {restorePend && (
+        <Overlay onClose={() => setRestorePend(null)}>
+          <div className="dlg sm" role="alertdialog" aria-modal="true" aria-label="Restaurar backup">
+            <div className="dlg-h"><h2>Restaurar backup?</h2></div>
+            <div className="dlg-b">
+              <p style={{ margin: "0 0 8px", color: "var(--ink-2)" }}>O arquivo <b>{restorePend.nome}</b> tem <b>{restorePend.list.length}</b> pedido(s).</p>
+              <p style={{ margin: 0, color: "var(--ink-2)" }}>{restorePend.existentes > 0 ? ("Em " + restorePend.existentes + " deles, os dados do arquivo vão substituir os dados atuais do pedido (alterações feitas depois do backup nesses campos serão perdidas). ") : ""}Pedidos que não estão no arquivo não são alterados. Se tiver dúvida, cancele e salve um backup atual antes.</p>
+            </div>
+            <div className="dlg-f">
+              <button className="btn" onClick={() => setRestorePend(null)}>Cancelar</button>
+              <button className="btn primary" onClick={confirmRestore}>Restaurar</button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {confirmDel && (
+        <Overlay onClose={() => setConfirmDel(null)}>
+          <div className="dlg sm" role="alertdialog" aria-modal="true" aria-label="Excluir pedido">
+            <div className="dlg-h"><h2>Mover para a lixeira?</h2></div>
+            <div className="dlg-b"><p style={{ margin: 0, color: "var(--ink-2)" }}>O pedido sai da lista, mas fica guardado na Lixeira do sistema (menu lateral) e pode ser restaurado quando quiser.</p></div>
+            <div className="dlg-f">
+              <button className="btn" onClick={() => setConfirmDel(null)}>Cancelar</button>
+              <button className="btn primary" style={{ background: "var(--alert-solid)", borderColor: "var(--alert-solid)", color: "#fff" }} onClick={() => handleDelete(confirmDel)}>Mover para a lixeira</button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {toast && <div className={"toast" + (toast.type === "err" ? " err" : "")} role="status"><Ic n={toast.type === "err" ? "alert" : "check"} />{toast.msg}</div>}
+    </FieldsCtx.Provider>
+    </StagesCtx.Provider>
+  );
+}
+
+/* ---------- Cartão do pedido ---------- */
+function OrderCard({ o, stage, onOpen, onEdit, onDel, onNext, onPrev }) {
+  const fields = useFields();
+  const late = isOverdue(o);
+  const due = dueInfo(o);
+  const stop = e => e.stopPropagation();
+  const customFields = fields.filter(f => !DEFAULT_FIELDS.some(d => d.key === f.key) && o.extras && o.extras[f.key]);
+  return (
+    <article className={"card" + (late ? " is-late" : "")} onClick={onOpen} tabIndex={0}
+      onKeyDown={e => { if (e.key === "Enter" && e.target === e.currentTarget) onOpen(); }}>
+      <div className="c-top">
+        <span className="num">{o.numero || o.id}</span>
+        {o.prioridade === "urgente" && <span className="urg">Urgente</span>}
+        {o.prioridade === "alta" && <span className="urg alta">Prioridade alta</span>}
+      </div>
+      <h3>{o.cliente}</h3>
+      <p className="desc">{tidy(o.descricao)}</p>
+      {(o.quantidade || o.valor) && (
+        <div className="meta">
+          {o.quantidade && <span><Ic n="package" />{Number(o.quantidade).toLocaleString("pt-BR")} un.</span>}
+          {o.valor && <span className="money">{formatBRL(o.valor)}</span>}
+        </div>
+      )}
+      {hasCusto(o) && (
+        <div className="meta">
+          <span style={{ color: lucro(o) < 0 ? "var(--alert)" : "var(--ok)", fontWeight: 600 }}>
+            Lucro {formatBRL(lucro(o))}{margem(o) !== null ? " (" + margem(o).toFixed(0) + "%)" : ""}
+          </span>
+        </div>
+      )}
+      {o.responsavel && <div className="meta"><span><Ic n="user" />{o.responsavel}</span></div>}
+      {customFields.map(f => <div className="meta" key={f.key}><span>{f.label}: {o.extras[f.key]}</span></div>)}
+      {due && <div className={"due " + due.k}><Ic n={due.k === "late" ? "alert" : "calendar"} /><span>{due.t}</span>{due.r && <em>{due.r}</em>}</div>}
+      {o.observacoes && <p className="obs">{tidy(o.observacoes)}</p>}
+      <div className="c-act" onClick={stop}>
+        {stage.actText ? <button className="btn sm" onClick={onNext}>{stage.actText}</button> : <span></span>}
+        <span className="pib">
+          {stage.prev && <button onClick={onPrev} aria-label="Voltar etapa" title="Voltar etapa"><Ic n="back" /></button>}
+          <button onClick={onEdit} aria-label="Editar pedido" title="Editar"><Ic n="pencil" /></button>
+          <button onClick={onDel} aria-label="Excluir pedido" title="Excluir"><Ic n="trash" /></button>
+        </span>
+      </div>
+    </article>
+  );
+}
+
+/* ---------- Detalhes ---------- */
+function DetailPanel({ o, onClose, onEdit, onDelete }) {
+  const [tab, setTab] = useState("info");
+  const stages = useStages();
+  const fields = useFields();
+  const pr = PRIORITIES.find(p => p.id === o.prioridade);
+  const due = dueInfo(o);
+  const hist = [...(o.historico || [])].reverse();
+  const customFields = fields.filter(f => !DEFAULT_FIELDS.some(d => d.key === f.key) && o.extras && o.extras[f.key]);
+  const rows = [
+    ["Etapa", stageLabel(o.status, stages)],
+    [fieldLabel("prioridade", fields), pr ? pr.label : "—"],
+    [fieldLabel("quantidade", fields), o.quantidade ? Number(o.quantidade).toLocaleString("pt-BR") + " un." : "—"],
+    ...(o.valorUnit ? [[fieldLabel("valorUnit", fields), formatBRL(o.valorUnit) + " / un."]] : []),
+    [fieldLabel("valor", fields), o.valor ? formatBRL(o.valor) : "—"],
+    ...(hasCusto(o) ? [
+      [fieldLabel("custo", fields), formatBRL(o.custo)],
+      [fieldLabel("frete", fields), o.frete ? formatBRL(o.frete) : "—"],
+      [fieldLabel("despesas", fields), o.despesas ? formatBRL(o.despesas) : "—"],
+      ["Lucro", formatBRL(lucro(o)) + (margem(o) !== null ? " (" + margem(o).toFixed(1) + "%)" : ""), lucro(o) < 0],
+    ] : []),
+    [fieldLabel("prazo", fields), due ? due.t + (due.r ? " (" + due.r + ")" : "") : "—", due && due.k === "late"],
+    [fieldLabel("responsavel", fields), o.responsavel || "—"],
+    [fieldLabel("observacoes", fields), o.observacoes || "—"],
+    ...customFields.map(f => [f.label, o.extras[f.key]]),
+    ["Criado em", formatDT(o.criadoEm)],
+  ];
+  return (
+    <div className="dlg" role="dialog" aria-modal="true" aria-label="Detalhes do pedido">
+      <div className="dlg-h">
+        <div>
+          <div className="sub">{o.numero || o.id}</div>
+          <h2>{o.cliente}</h2>
+          <div className="sub" style={{ fontSize: 13.5, color: "var(--ink-2)" }}>{o.descricao}</div>
+        </div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="tabs2" role="tablist">
+        <button className="tab2" role="tab" aria-selected={tab === "info"} onClick={() => setTab("info")}>Detalhes</button>
+        <button className="tab2" role="tab" aria-selected={tab === "hist"} onClick={() => setTab("hist")}>Histórico{hist.length > 0 ? " (" + hist.length + ")" : ""}</button>
+      </div>
+      <div className="dlg-b">
+        {tab === "info"
+          ? <dl style={{ margin: 0 }}>{rows.map(r => <div className="kv" key={r[0]}><dt>{r[0]}</dt><dd className={r[2] ? "bad" : ""}>{r[1]}</dd></div>)}</dl>
+          : hist.length === 0
+            ? <p style={{ color: "var(--muted)" }}>Sem histórico registrado.</p>
+            : hist.map((h, i) => (
+              <div className="tl" key={i}><i></i>
+                <div style={{ flex: 1 }}>
+                  <div className="tt"><b>{h.acao}</b><small>{formatDT(h.data)}</small></div>
+                  <p>{h.detalhes}</p>
+                </div>
+              </div>
+            ))}
+      </div>
+      <div className="dlg-f">
+        <button className="btn danger" onClick={onDelete}><Ic n="trash" />Excluir</button>
+        <span className="grow"></span>
+        <button className="btn primary" onClick={onEdit}><Ic n="pencil" />Editar pedido</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Resumo do dia ---------- */
+function DailySummary({ orders, onClose }) {
+  const late = orders.filter(isOverdue).sort(byPrazo);
+  const soon = orders.filter(o => { const d = dayDiff(o.prazo); return d !== null && d >= 0 && d <= 7 && o.status !== "entregue"; }).sort(byPrazo);
+  const soon3 = soon.filter(o => dayDiff(o.prazo) <= 3);
+  const week = soon.filter(o => dayDiff(o.prazo) > 3);
+  const hist = orders.flatMap(o => (o.historico || []).map(h => ({ ...h, cliente: o.cliente }))).sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 6);
+  const total = sumVal(orders);
+  const ent = sumVal(orders.filter(o => o.status === "entregue"));
+  const comCusto = orders.filter(hasCusto);
+  const lucroTotal = comCusto.reduce((s, o) => s + lucro(o), 0);
+  const margemMedia = comCusto.length ? comCusto.reduce((s, o) => s + (margem(o) || 0), 0) / comCusto.length : null;
+  const rest = (list, cls, icon, title, tag) => list.length > 0 && (
+    <div className={"ss " + cls}>
+      <h4><Ic n={icon} />{title} ({list.length})</h4>
+      {list.map(o => (
+        <div className="ss-r" key={o.id}>
+          <div><b style={{ fontWeight: 600 }}>{o.cliente}</b><small>{tidy(o.descricao)}</small></div>
+          <span className="tag">{tag(o)}</span>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div className="dlg" role="dialog" aria-modal="true" aria-label="Resumo do dia" style={{ width: 560 }}>
+      <div className="dlg-h">
+        <div>
+          <h2>Resumo do dia</h2>
+          <div className="sub">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+        </div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="dlg-b">
+        <div className="fin">
+          <div><span className="n">{formatBRL(total)}</span><span className="t">em carteira</span></div>
+          <div><span className="n">{formatBRL(ent)}</span><span className="t">já entregue</span></div>
+          <div><span className="n">{formatBRL(total - ent)}</span><span className="t">em andamento</span></div>
+        </div>
+        {comCusto.length > 0 && (
+          <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 8, background: "var(--col)", fontSize: 13, color: "var(--ink-2)" }}>
+            <b style={{ fontWeight: 600, color: "var(--ink)" }}>Lucratividade</b> — {comCusto.length} de {orders.length} pedidos com custo informado · Lucro total: <b style={{ color: lucroTotal < 0 ? "var(--alert)" : "var(--ok)" }}>{formatBRL(lucroTotal)}</b>{margemMedia !== null ? " · Margem média: " + margemMedia.toFixed(1) + "%" : ""}
+          </div>
+        )}
+        {rest(late, "bad", "alert", "Atrasados", o => "venceu em " + formatDate(o.prazo))}
+        {rest(soon3, "soon", "clock", "Vencem em até 3 dias", o => { const d = dayDiff(o.prazo); return d === 0 ? "hoje" : d === 1 ? "amanhã" : "em " + d + " dias"; })}
+        {rest(week, "", "calendar", "Vencem esta semana", o => "em " + dayDiff(o.prazo) + " dias")}
+        {late.length === 0 && soon.length === 0 && <p className="ss-ok">Nenhum pedido atrasado ou vencendo em breve.</p>}
+        {hist.length > 0 && (
+          <div className="ss">
+            <h4>Últimas movimentações</h4>
+            {hist.map((h, i) => (
+              <div className="ss-r" key={i}>
+                <div><b style={{ fontWeight: 600 }}>{h.cliente}</b><small>{h.acao}: {h.detalhes}</small></div>
+                <span className="tag" style={{ fontWeight: 400, color: "var(--muted)" }}>{formatDT(h.data)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="dlg-f"><button className="btn primary" onClick={onClose}>Ir para o painel</button></div>
+    </div>
+  );
+}
+
+/* ---------- Formulário ---------- */
+function Field({ label, children }) { return <div className="f"><label>{label}</label>{children}</div>; }
+/* ---------- Gerenciar etapas ---------- */
+const GROUP_OPTIONS = [...MODULE_GROUPS.map(m => ({ key: m.key, label: m.nome })), { key: "", label: "Nenhum (aparece em Outros)" }];
+
+/* ---------- Recuperar etapas perdidas (acionado pelo usuário, só adiciona) ---------- */
+function labelFromHistory(o) {
+  const h = (o.historico || []).slice().reverse();
+  for (const e of h) {
+    for (const seg of String(e.detalhes || "").split(" · ")) {
+      if (seg.includes("→") && (e.acao === "Etapa alterada" || /^Etapa:/.test(seg))) {
+        return seg.replace(/^Etapa:\s*/, "").split("→").pop().trim();
+      }
+    }
+  }
+  return "";
+}
+function guessGroup(label) {
+  if (/fatur/i.test(label)) return "faturamento";
+  if (/entreg|log[ií]st/i.test(label)) return "logistica";
+  if (/confec|produ/i.test(label)) return "producao";
+  if (/pendent/i.test(label)) return "pendente";
+  return "";
+}
+function RecoverStages({ orders, stages, onClose, onSave }) {
+  const [rows, setRows] = useState(() => {
+    const map = {};
+    orders.forEach(o => { (map[o.status] = map[o.status] || []).push(o); });
+    return Object.keys(map).map(id => {
+      const label = map[id].map(labelFromHistory).find(Boolean) || "";
+      return { id, label, group: guessGroup(label), orders: map[id] };
+    });
+  });
+  const [saving, setSaving] = useState(false);
+  const upd = (i, patch) => setRows(r => r.map((x, j) => j === i ? { ...x, ...patch } : x));
+  async function save() {
+    setSaving(true);
+    try {
+      const add = rows.map((r, i) => ({
+        id: r.id, label: (r.label || "").trim() || "Etapa recuperada " + (i + 1),
+        icon: r.group === "faturamento" ? "receipt" : r.group === "logistica" ? "truck" : "quote",
+        color: STAGE_PALETTE[(stages.length + i) % STAGE_PALETTE.length], actLabel: "", group: r.group,
+      }));
+      await onSave([...stages, ...add]);
+      onClose();
+    } finally { setSaving(false); }
+  }
+  return (
+    <div className="dlg" role="dialog" aria-modal="true" aria-label="Recuperar etapas">
+      <div className="dlg-h">
+        <div><h2>Recuperar etapas</h2>
+          <div className="sub">Estes pedidos apontam para etapas que não estão mais na lista. Nada será apagado: as etapas abaixo serão apenas adicionadas ao fim da lista (depois você pode reordenar em Etapas).</div></div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="dlg-b">
+        {rows.map((r, i) => (
+          <div key={r.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>{r.orders.length} pedido{r.orders.length > 1 ? "s" : ""}: {r.orders.slice(0, 3).map(o => o.cliente).join(", ")}{r.orders.length > 3 ? "…" : ""}</div>
+            <input className="inp" value={r.label} onChange={e => upd(i, { label: e.target.value })} placeholder="Nome da etapa (ex: Faturamento)" />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>Aparece no card</span>
+              <select className="inp" value={r.group} onChange={e => upd(i, { group: e.target.value })} style={{ width: "auto", padding: "4px 8px", fontSize: 12.5 }}>
+                {GROUP_OPTIONS.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+              </select>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="dlg-f">
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn primary" onClick={save} disabled={saving}>{saving ? "Salvando…" : "Recriar etapas"}</button>
+      </div>
+    </div>
+  );
+}
+
+function StagesManager({ stages, counts, onClose, onSave }) {
+  const [list, setList] = useState(() => stages.map(s => ({ ...s, group: s.group != null ? s.group : groupOfStage(s.id, stages) })));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function update(i, patch) { setList(l => l.map((s, idx) => idx === i ? { ...s, ...patch } : s)); }
+  function move(i, dir) {
+    setList(l => {
+      const j = i + dir;
+      if (j < 0 || j >= l.length) return l;
+      const n = [...l];
+      [n[i], n[j]] = [n[j], n[i]];
+      return n;
+    });
+  }
+  function addStage() {
+    const id = "etapa-" + Date.now().toString(36);
+    const lastGroup = list.length ? list[list.length - 1].group : "";
+    setList(l => [...l, { id, label: "Nova etapa", icon: "quote", color: STAGE_PALETTE[l.length % STAGE_PALETTE.length], actLabel: "", group: lastGroup || "" }]);
+  }
+  function removeStage(i) {
+    setList(l => l.filter((_, idx) => idx !== i));
+  }
+  async function save() {
+    if (list.length === 0) { setErr("É preciso ter pelo menos uma etapa."); return; }
+    if (list.some(s => !s.label.trim())) { setErr("Toda etapa precisa de um nome."); return; }
+    setErr("");
+    setSaving(true);
+    try { await onSave(list); onClose(); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="dlg" role="dialog" aria-modal="true" aria-label="Gerenciar etapas" style={{ width: 560 }}>
+      <div className="dlg-h">
+        <div>
+          <h2>Gerenciar etapas</h2>
+          <div className="sub">Renomeie, reordene ou crie etapas do seu fluxo de pedidos.</div>
+        </div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="dlg-b">
+        {list.map((s, i) => {
+          const inUse = counts[s.id] || 0;
+          return (
+            <div key={s.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 6 }}>
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Mover para cima" style={{ width: 24, height: 20, display: "grid", placeItems: "center", border: "0", background: "none", color: i === 0 ? "var(--line-strong)" : "var(--ink-2)", cursor: i === 0 ? "default" : "pointer" }}><Ic n="up" /></button>
+                <button onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="Mover para baixo" style={{ width: 24, height: 20, display: "grid", placeItems: "center", border: "0", background: "none", color: i === list.length - 1 ? "var(--line-strong)" : "var(--ink-2)", cursor: i === list.length - 1 ? "default" : "pointer" }}><Ic n="down" /></button>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input className="inp" value={s.label} onChange={e => update(i, { label: e.target.value })} placeholder="Nome da etapa" style={{ flex: 1 }} />
+                  <button onClick={() => removeStage(i)} disabled={inUse > 0} title={inUse > 0 ? inUse + " pedido(s) nesta etapa" : "Excluir etapa"}
+                    style={{ width: 30, height: 30, flex: "none", display: "grid", placeItems: "center", border: "1px solid var(--line-strong)", borderRadius: 6, background: "var(--surface)", color: inUse > 0 ? "var(--line-strong)" : "var(--alert)", cursor: inUse > 0 ? "not-allowed" : "pointer" }}>
+                    <Ic n="trash" />
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>Ícone</span>
+                  {STAGE_ICONS.map(ic => (
+                    <button key={ic} onClick={() => update(i, { icon: ic })} aria-label={ic}
+                      style={{ width: 26, height: 26, display: "grid", placeItems: "center", borderRadius: 6, border: s.icon === ic ? "2px solid var(--ink)" : "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer" }}>
+                      <Ic n={ic} />
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>Cor</span>
+                  {STAGE_PALETTE.map(c => (
+                    <button key={c} onClick={() => update(i, { color: c })} aria-label={c}
+                      style={{ width: 20, height: 20, borderRadius: "50%", background: c, border: s.color === c ? "2px solid var(--ink)" : "1px solid var(--line)", cursor: "pointer" }}></button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>Aparece no card</span>
+                  <select className="inp" value={s.group || ""} onChange={e => update(i, { group: e.target.value })} style={{ width: "auto", padding: "4px 8px", fontSize: 12.5 }}>
+                    {GROUP_OPTIONS.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+                  </select>
+                </div>
+                <input className="inp" value={s.actLabel || ""} onChange={e => update(i, { actLabel: e.target.value })}
+                  placeholder={i < list.length - 1 ? 'Texto do botão (opcional) · padrão: "Avançar para ' + (list[i + 1] ? list[i + 1].label : "…") + '"' : "Última etapa — sem botão de avançar"}
+                  style={{ marginTop: 8 }} disabled={i === list.length - 1} />
+                {inUse > 0 && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{inUse} pedido{inUse > 1 ? "s" : ""} nesta etapa — mova-os antes de excluir.</div>}
+              </div>
+            </div>
+          );
+        })}
+        <button className="btn" onClick={addStage} style={{ marginTop: 12 }}><Ic n="plus" />Nova etapa</button>
+        {err && <p style={{ color: "var(--alert)", fontSize: 13, marginTop: 10 }}>{err}</p>}
+      </div>
+      <div className="dlg-f">
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn primary" onClick={save} disabled={saving}>{saving ? "Salvando…" : "Salvar etapas"}</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Gerenciar campos ---------- */
+function FieldsManager({ fields, onClose, onSave }) {
+  const [list, setList] = useState(() => fields.map(f => ({ ...f })));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function update(i, patch) { setList(l => l.map((f, idx) => idx === i ? { ...f, ...patch } : f)); }
+  function move(i, dir) {
+    setList(l => {
+      const j = i + dir;
+      if (j < 0 || j >= l.length) return l;
+      const n = [...l];
+      [n[i], n[j]] = [n[j], n[i]];
+      return n;
+    });
+  }
+  function addField() {
+    const key = "extra-" + Date.now().toString(36);
+    setList(l => [...l, { key, label: "Novo campo", type: "text", visible: true }]);
+  }
+  function removeField(i) { setList(l => l.filter((_, idx) => idx !== i)); }
+  async function save() {
+    if (list.some(f => !f.label.trim())) { setErr("Todo campo precisa de um nome."); return; }
+    setErr("");
+    setSaving(true);
+    try { await onSave(list); onClose(); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="dlg" role="dialog" aria-modal="true" aria-label="Gerenciar campos" style={{ width: 560 }}>
+      <div className="dlg-h">
+        <div>
+          <h2>Gerenciar campos</h2>
+          <div className="sub">Renomeie, esconda, reordene ou crie campos do formulário de pedido. Cliente, Descrição e Etapa não aparecem aqui porque o sistema precisa deles sempre.</div>
+        </div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="dlg-b">
+        {list.map((f, i) => {
+          const isCustom = !DEFAULT_FIELDS.some(d => d.key === f.key);
+          return (
+            <div key={f.key} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 6 }}>
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Mover para cima" style={{ width: 24, height: 20, display: "grid", placeItems: "center", border: "0", background: "none", color: i === 0 ? "var(--line-strong)" : "var(--ink-2)", cursor: i === 0 ? "default" : "pointer" }}><Ic n="up" /></button>
+                <button onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="Mover para baixo" style={{ width: 24, height: 20, display: "grid", placeItems: "center", border: "0", background: "none", color: i === list.length - 1 ? "var(--line-strong)" : "var(--ink-2)", cursor: i === list.length - 1 ? "default" : "pointer" }}><Ic n="down" /></button>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input className="inp" value={f.label} onChange={e => update(i, { label: e.target.value })} placeholder="Nome do campo" style={{ flex: 1 }} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--ink-2)", flex: "none", whiteSpace: "nowrap" }}>
+                    <input type="checkbox" checked={f.visible !== false} onChange={e => update(i, { visible: e.target.checked })} />
+                    Visível
+                  </label>
+                  {isCustom
+                    ? <select className="inp" value={f.type} onChange={e => update(i, { type: e.target.value })} style={{ flex: "none", width: 120 }}>
+                        {FIELD_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                      </select>
+                    : <span style={{ fontSize: 12, color: "var(--muted)", flex: "none", width: 90 }}>{f.key === "prioridade" ? "lista fixa" : (FIELD_TYPES.find(t => t.id === f.type) || {}).label}</span>}
+                  {isCustom && (
+                    <button onClick={() => removeField(i)} title="Excluir campo"
+                      style={{ width: 30, height: 30, flex: "none", display: "grid", placeItems: "center", border: "1px solid var(--line-strong)", borderRadius: 6, background: "var(--surface)", color: "var(--alert)", cursor: "pointer" }}>
+                      <Ic n="trash" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <button className="btn" onClick={addField} style={{ marginTop: 12 }}><Ic n="plus" />Novo campo</button>
+        {err && <p style={{ color: "var(--alert)", fontSize: 13, marginTop: 10 }}>{err}</p>}
+      </div>
+      <div className="dlg-f">
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn primary" onClick={save} disabled={saving}>{saving ? "Salvando…" : "Salvar campos"}</button>
+      </div>
+    </div>
+  );
+}
+
+function FormBody({ form, setForm }) {
+  const stages = useStages();
+  const fields = useFields();
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  function setExtra(k, v) { setForm(f => ({ ...f, extras: { ...(f.extras || {}), [k]: v } })); }
+  function setQuantidade(v) {
+    setForm(f => {
+      const next = { ...f, quantidade: v };
+      const q = Number(v) || 0, vu = Number(f.valorUnit) || 0;
+      if (!f.valor && q > 0 && vu > 0) next.valor = (q * vu).toFixed(2);
+      return next;
+    });
+  }
+  function setValorUnit(v) {
+    setForm(f => {
+      const next = { ...f, valorUnit: v };
+      const q = Number(f.quantidade) || 0, vu = Number(v) || 0;
+      if (!f.valor && q > 0 && vu > 0) next.valor = (q * vu).toFixed(2);
+      return next;
+    });
+  }
+
+  function renderField(f) {
+    const isCustom = !DEFAULT_FIELDS.some(d => d.key === f.key);
+    if (isCustom) {
+      const v = (form.extras || {})[f.key] || "";
+      const onCh = e => setExtra(f.key, e.target.value);
+      if (f.type === "textarea") return <Field key={f.key} label={f.label}><textarea className="inp" rows={2} value={v} onChange={onCh} /></Field>;
+      return <Field key={f.key} label={f.label}><input className="inp" type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"} value={v} onChange={onCh} /></Field>;
+    }
+    switch (f.key) {
+      case "quantidade": return <Field key={f.key} label={f.label}><input className="inp" type="number" value={form.quantidade || ""} onChange={e => setQuantidade(e.target.value)} placeholder="0" /></Field>;
+      case "valorUnit": return <Field key={f.key} label={f.label}><input className="inp" type="number" step="0.01" value={form.valorUnit || ""} onChange={e => setValorUnit(e.target.value)} placeholder="Opcional · por unidade" /></Field>;
+      case "valor": return <Field key={f.key} label={f.label}><input className="inp" type="number" step="0.01" value={form.valor || ""} onChange={e => set("valor", e.target.value)} placeholder="0,00" /></Field>;
+      case "custo": return <Field key={f.key} label={f.label}><input className="inp" type="number" step="0.01" value={form.custo || ""} onChange={e => set("custo", e.target.value)} placeholder="Opcional" /></Field>;
+      case "frete": return <Field key={f.key} label={f.label}><input className="inp" type="number" step="0.01" value={form.frete || ""} onChange={e => set("frete", e.target.value)} placeholder="Opcional" /></Field>;
+      case "despesas": return <Field key={f.key} label={f.label}><input className="inp" type="number" step="0.01" value={form.despesas || ""} onChange={e => set("despesas", e.target.value)} placeholder="Opcional" /></Field>;
+      case "prazo": return <Field key={f.key} label={f.label}><input className="inp" type="date" value={form.prazo || ""} onChange={e => set("prazo", e.target.value)} /></Field>;
+      case "responsavel": return <Field key={f.key} label={f.label}><input className="inp" value={form.responsavel || ""} onChange={e => set("responsavel", e.target.value)} placeholder="Quem está produzindo" /></Field>;
+      case "numero": return <Field key={f.key} label={f.label}><input className="inp" value={form.numero || ""} onChange={e => set("numero", e.target.value)} placeholder="Ex.: 60893/2025" /></Field>;
+      case "observacoes": return <Field key={f.key} label={f.label}><textarea className="inp" rows={2} value={form.observacoes || ""} onChange={e => set("observacoes", e.target.value)} placeholder="Anotações importantes" /></Field>;
+      case "prioridade": return (
+        <Field key={f.key} label={f.label}>
+          <select className="inp" value={form.prioridade || "media"} onChange={e => set("prioridade", e.target.value)}>
+            {PRIORITIES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+        </Field>
+      );
+      default: return null;
+    }
+  }
+
+  return (
+    <div className="form">
+      <Field label="Cliente ou órgão público *"><input className="inp" value={form.cliente || ""} onChange={e => set("cliente", e.target.value)} placeholder="Nome do cliente ou secretaria" /></Field>
+      <Field label="Descrição do item ou lote *"><textarea className="inp" rows={3} value={form.descricao || ""} onChange={e => set("descricao", e.target.value)} placeholder="Descreva o pedido ou lote" /></Field>
+      {fields.filter(f => f.visible !== false).map(renderField)}
+      {hasCusto(form) && (
+        <Field label="Lucro estimado">
+          <div className="inp" style={{ background: "var(--col)", color: lucro(form) < 0 ? "var(--alert)" : "var(--ok)", fontWeight: 600, display: "flex", alignItems: "center" }}>
+            {formatBRL(lucro(form))}{margem(form) !== null ? " · " + margem(form).toFixed(1) + "%" : ""}
+          </div>
+        </Field>
+      )}
+      <Field label="Etapa">
+        <select className="inp" value={form.status || (stages[0] || {}).id || ""} onChange={e => set("status", e.target.value)}>
+          {stages.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+      </Field>
+    </div>
+  );
+}
+
+function Overlay({ onClose, children }) {
+  useEffect(() => {
+    const h = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, []);
+  return <div className="ov" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>{children}</div>;
+}
+
+function PedidosPagina() {
+  return (<React.Fragment><Header /><div className="ped-app"><PedidosApp /></div></React.Fragment>);
+}
+(function(){try{var t=localStorage.getItem('novari-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+ReactDOM.createRoot(document.getElementById("root")).render(<AuthGate><PedidosPagina /></AuthGate>);
+
+</script>
+</body>
+</html>
