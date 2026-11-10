@@ -87,6 +87,12 @@ button,input,select,textarea{font-family:inherit}
 .ib{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--ink-2);
   background:transparent;border:1px solid transparent;cursor:pointer;position:relative}
 .ib:hover{background:var(--hover);border-color:var(--line)}
+.bk-pop{position:absolute;right:0;top:calc(100% + 8px);width:270px;z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.16);padding:14px;font-size:13px;color:var(--ink)}
+.bk-file{margin:2px 0 8px;font-size:11.5px;color:var(--ink-2);word-break:break-all}
+.bk-list{max-height:220px;overflow:auto;border-top:1px solid var(--line)}
+.bk-list div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px}
+.bk-err{margin-top:8px;color:#B42318;font-weight:600;font-size:12px}
+.bk-close{margin-top:10px;width:100%;height:32px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer;font:inherit}
 .ib .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
 .user{display:flex;align-items:center;gap:10px;padding-left:4px}
 .ava{width:38px;height:38px;border-radius:10px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
@@ -236,6 +242,7 @@ button,input,select,textarea{font-family:inherit}
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
 </svg>
 
@@ -338,6 +345,70 @@ function Sidebar(){
   );
 }
 
+/* ---------- Backup completo (somente leitura: não altera nenhum dado) ---------- */
+const BACKUP_COLECOES = ['contatos','orcamentos','pedidos','contas_pagar','contas_receber','notas_entrada','notas_saida',
+  'estoque_itens','estoque_movimentacoes','editais','concorrentes','empresa','certidoes','documentos','licencas','patrimonio','config','arquivos'];
+function bkSerial(v){
+  if (v === null || v === undefined) return v;
+  if (typeof v.toDate === 'function') return {__tipo:'timestamp', iso: v.toDate().toISOString()};
+  if (Array.isArray(v)) return v.map(bkSerial);
+  if (typeof v === 'object') { const o = {}; Object.keys(v).forEach(k => { o[k] = bkSerial(v[k]); }); return o; }
+  return v;
+}
+function BackupButton(){
+  const [st, setSt] = useState(null); // null | {rodando} | {resumo, erros}
+  async function gerar(){
+    if (!db) return;
+    setSt({rodando:true});
+    const dados = {}, resumo = [], erros = [];
+    for (const nome of BACKUP_COLECOES) {
+      try {
+        const snap = await db.collection(nome).get();
+        const docs = [];
+        for (const d of snap.docs) {
+          const reg = {id: d.id, dados: bkSerial(d.data())};
+          if (nome === 'arquivos') {
+            const partes = await d.ref.collection('partes').get();
+            reg.partes = partes.docs.map(x => ({id: x.id, dados: bkSerial(x.data())}));
+          }
+          docs.push(reg);
+        }
+        dados[nome] = docs;
+        resumo.push({nome, n: docs.length});
+      } catch (e) { erros.push(nome + ': ' + (e.code || e.message)); }
+    }
+    const agora = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const nomeArq = 'backup-novari-' + agora.getFullYear() + '-' + pad(agora.getMonth()+1) + '-' + pad(agora.getDate()) + '-' + pad(agora.getHours()) + pad(agora.getMinutes()) + '.json';
+    const blob = new Blob([JSON.stringify({versao:'novari-backup-v1', geradoEm: agora.toISOString(), completo: erros.length === 0, erros, colecoes: dados})], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nomeArq;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    setSt({resumo, erros, nomeArq});
+  }
+  return (
+    <div style={{position:'relative'}}>
+      <button className="ib" onClick={gerar} disabled={st && st.rodando} aria-label="Backup completo" title="Baixar backup completo de todos os dados">
+        <Icon name="download" />
+      </button>
+      {st && (
+        <div className="bk-pop" role="status">
+          {st.rodando ? <b>Gerando backup…</b> : (
+            <>
+              <b>{st.erros.length ? 'Backup INCOMPLETO' : 'Backup salvo'}</b>
+              <div className="bk-file">{st.nomeArq}</div>
+              <div className="bk-list">{st.resumo.map(r => <div key={r.nome}><span>{r.nome}</span><span>{r.n}</span></div>)}</div>
+              {st.erros.length > 0 && <div className="bk-err">Não foi possível ler: {st.erros.join('; ')}</div>}
+              <button className="bk-close" onClick={() => setSt(null)}>Fechar</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Topbar(){
   function toggleTheme(){
     const root = document.documentElement;
@@ -357,6 +428,7 @@ function Topbar(){
       <button className="ib" onClick={toggleTheme} aria-label="Alternar tema claro/escuro">
         <Icon name="moon" className="ic theme-moon" /><Icon name="sun" className="ic theme-sun" />
       </button>
+      <BackupButton />
       <button className="ib" onClick={() => firebase.auth().signOut()} aria-label="Sair" title="Sair"><Icon name="logout" /></button>
       <button className="ib" aria-label="Notificações"><Icon name="bell" /><span className="dot"></span></button>
       <button className="ib" aria-label="Ajuda"><Icon name="help" /></button>
