@@ -141,6 +141,9 @@ select.inp{appearance:auto}
 .seg button+button{border-left:0}
 .seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.hint-e{color:var(--alert);font-size:12px;margin:5px 0 0;font-weight:600}
+.hint-w{background:var(--warn-bg);color:var(--warn);font-size:12.5px;line-height:1.45;border-radius:8px;padding:9px 12px;font-weight:500}
+.hint-w b{font-weight:700}
 .empty{color:var(--muted);padding:30px 0;text-align:center}
 .loading{color:var(--muted);padding:30px 0;text-align:center}
 
@@ -393,20 +396,79 @@ function useCollection(name) {
 /* ── Contato Form ────────────────────────── */
 const emptyForm = {tipo:'privada', nome:'', cnpj:'', telefone:'', email:'', cidade:'', observacoes:''};
 
-function ContatoDialog({initial, onClose, onSaved}) {
+/* ── CNPJ/CPF e duplicados ──────────────── */
+function soDigitos(s) { return String(s || '').replace(/\D/g, ''); }
+function cpfValido(d) {
+  if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+  for (let t = 9; t < 11; t++) {
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(d[i]) * (t + 1 - i);
+    if (((soma * 10) % 11) % 10 !== Number(d[t])) return false;
+  }
+  return true;
+}
+function cnpjValido(d) {
+  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+  for (let t = 12; t < 14; t++) {
+    const pesos = t === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(d[i]) * pesos[i];
+    const r = soma % 11;
+    if ((r < 2 ? 0 : 11 - r) !== Number(d[t])) return false;
+  }
+  return true;
+}
+function formatarDoc(d) {
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  return d;
+}
+/* ok=false => documento inválido; vazio=true => campo em branco (permitido) */
+function docInfo(txt) {
+  const d = soDigitos(txt);
+  if (!d) return {vazio: true, ok: true, d};
+  if (d.length === 11) return {ok: cpfValido(d), d, tipo: 'CPF'};
+  if (d.length === 14) return {ok: cnpjValido(d), d, tipo: 'CNPJ'};
+  return {ok: false, d, tipo: 'CNPJ/CPF', incompleto: true};
+}
+function normNome(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function ContatoDialog({initial, onClose, onSaved, contatos}) {
   const isEdit = !!(initial && initial.id);
   const [form, setForm] = useState(initial ? {...emptyForm, ...initial} : emptyForm);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [dupOk, setDupOk] = useState(false);
 
-  function set(k, v) { setForm(f => ({...f, [k]: v})); }
+  function set(k, v) { setForm(f => ({...f, [k]: v})); if (k === 'nome' || k === 'cnpj') setDupOk(false); }
+
+  const doc = docInfo(form.cnpj);
+  const docMudou = soDigitos(form.cnpj) !== soDigitos(initial && initial.cnpj);
+  const nomeNorm = normNome(form.nome);
+  const duplicados = (contatos || []).filter(c => {
+    if (initial && c.id === initial.id) return false;
+    const mesmoDoc = !!doc.d && doc.ok && soDigitos(c.cnpj) === doc.d;
+    const mesmoNome = !!nomeNorm && normNome(c.nome) === nomeNorm;
+    return mesmoDoc || mesmoNome;
+  });
 
   async function save() {
     if (!form.nome.trim()) { setErr('Informe o nome ou razão social.'); return; }
+    if (!doc.vazio && !doc.ok && docMudou) {
+      setErr(doc.incompleto ? 'Digite 11 dígitos (CPF) ou 14 dígitos (CNPJ), ou deixe o campo em branco.' : (doc.tipo + ' inválido. Confira os dígitos.'));
+      return;
+    }
+    if (duplicados.length > 0 && !dupOk) {
+      setDupOk(true);
+      setErr('Já existe cadastro parecido (veja o aviso acima). Se é outro cliente mesmo, clique em Salvar de novo.');
+      return;
+    }
     setErr(''); setSaving(true);
     try {
       const data = {
-        tipo: form.tipo, nome: form.nome.trim(), cnpj: form.cnpj.trim(),
+        tipo: form.tipo, nome: form.nome.trim(), cnpj: (doc.ok && doc.d) ? formatarDoc(doc.d) : form.cnpj.trim(),
         telefone: form.telefone.trim(), email: form.email.trim(),
         cidade: form.cidade.trim(), observacoes: form.observacoes.trim(),
       };
@@ -457,9 +519,16 @@ function ContatoDialog({initial, onClose, onSaved}) {
         </div>
         <div className="f"><label>Nome / Razão social *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Nome do cliente ou órgão" /></div>
         <div className="row2">
-          <div className="f"><label>CNPJ</label><input className="inp" value={form.cnpj} onChange={e=>set('cnpj',e.target.value)} placeholder="00.000.000/0000-00" /></div>
+          <div className="f"><label>CNPJ / CPF</label><input className="inp" value={form.cnpj} onChange={e=>set('cnpj',e.target.value)} placeholder="00.000.000/0000-00" inputMode="numeric" />
+            {!doc.vazio && !doc.ok && <p className="hint-e">{doc.incompleto ? 'Faltam dígitos: CPF tem 11 e CNPJ tem 14.' : (doc.tipo + ' inválido: confira os dígitos.')}</p>}
+          </div>
           <div className="f"><label>Telefone</label><input className="inp" value={form.telefone} onChange={e=>set('telefone',e.target.value)} placeholder="(92) 00000-0000" /></div>
         </div>
+        {duplicados.length > 0 && (
+          <div className="hint-w">
+            <b>Já existe cadastro parecido:</b> {duplicados.slice(0,3).map(c => c.nome).join(' · ')}{duplicados.length > 3 ? ' e mais ' + (duplicados.length - 3) : ''}. Confira antes de salvar para não duplicar o cliente.
+          </div>
+        )}
         <div className="f"><label>E-mail</label><input className="inp" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="contato@empresa.com" /></div>
         <div className="f"><label>Cidade / UF</label><input className="inp" value={form.cidade} onChange={e=>set('cidade',e.target.value)} placeholder="Manaus / AM" /></div>
         <div className="f"><label>Observações</label><textarea className="inp" rows="2" value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Anotações sobre este contato"></textarea></div>
@@ -576,6 +645,7 @@ function App() {
         {editing !== null && (
           <ContatoDialog
             initial={editing}
+            contatos={contatos}
             onClose={() => setEditing(null)}
             onSaved={() => setEditing(null)}
           />
