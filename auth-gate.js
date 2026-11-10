@@ -76,3 +76,31 @@ function AuthGate({children}) {
 
   return children;
 }
+
+/* ---------- Aviso global de erro de leitura ---------- */
+/* Evita que uma falha de leitura (permissão/internet) apareça como "lista vazia". Não grava nada. */
+window.novariErroLeitura = function (nome, err) {
+  try { if (window.firebase && firebase.auth && !firebase.auth().currentUser) return; } catch (e) {}
+  var id = 'novari-erro-leitura';
+  var box = document.getElementById(id);
+  if (!box) {
+    box = document.createElement('div');
+    box.id = id;
+    box.setAttribute('role', 'alert');
+    box.style.cssText = 'position:fixed;left:16px;right:16px;bottom:16px;z-index:9998;max-width:720px;margin:0 auto;background:#FEF0EE;color:#7A271A;border:1px solid #B42318;border-radius:12px;padding:14px 16px;font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.18)';
+    box._nomes = [];
+    document.body.appendChild(box);
+  }
+  if (box._nomes.indexOf(nome) === -1) box._nomes.push(nome);
+  var cod = (err && (err.code || err.message)) || 'erro desconhecido';
+  box.textContent = '';
+  var b = document.createElement('b');
+  b.textContent = 'Não foi possível carregar: ' + box._nomes.join(', ') + '.';
+  var p = document.createElement('div');
+  p.textContent = 'Seus dados não foram apagados — é uma falha de leitura (' + cod + '). Verifique a internet e recarregue a página. Não cadastre nada novo enquanto este aviso aparecer.';
+  var btn = document.createElement('button');
+  btn.textContent = 'Recarregar';
+  btn.style.cssText = 'margin-top:10px;height:32px;padding:0 14px;border:1px solid #B42318;border-radius:8px;background:#fff;color:#7A271A;font:inherit;font-weight:600;cursor:pointer';
+  btn.onclick = function () { location.reload(); };
+  box.appendChild(b); box.appendChild(p); box.appendChild(btn);
+};

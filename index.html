@@ -298,7 +298,7 @@ function useCol(name){
     try {
       unsub = db.collection(name).onSnapshot(
         snap => { setItems(snap.docs.map(d => ({id:d.id, ...d.data()}))); setLoading(false); },
-        err => { console.error(name, err); setLoading(false); }
+        err => { console.error(name, err); setLoading(false); if (window.novariErroLeitura) window.novariErroLeitura(name, err); }
       );
     } catch(e){ console.error(name, e); setLoading(false); }
     return () => { try{ unsub && unsub(); }catch(e){} };

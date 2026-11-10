@@ -354,7 +354,7 @@ function useCollection(name) {
     const unsub = db.collection(name).onSnapshot(snap => {
       setItems(snap.docs.map(d => ({id:d.id, ...d.data()})));
       setLoading(false);
-    }, () => setLoading(false));
+    }, err => { setLoading(false); if (window.novariErroLeitura) window.novariErroLeitura(name, err); });
     return unsub;
   }, [name]);
   return {items, loading};
