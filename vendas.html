@@ -15,6 +15,7 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
 <script type="text/babel" src="auth-gate.js?v=20261110b"></script>
+<script src="mobile.js?v=20261110c"></script>
 <style>
 :root{
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
@@ -179,7 +180,7 @@ textarea.inp{height:70px;resize:vertical;font-family:inherit}
 .cost-row{display:grid;grid-template-columns:1fr 140px 34px;gap:8px}
 .price-total{background:var(--ok-bg);color:var(--ok)}
 .price-total b{font-size:17px;color:var(--ok)}
-@media (max-width:560px){ .cost-row{grid-template-columns:1fr 1fr;row-gap:8px} .cost-row .item-rm{grid-column:2/3;justify-self:end} }
+@media (max-width:560px){ .cost-row{grid-template-columns:1fr 96px 34px} }
 .err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
 .nf-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none}
 .nf-link:hover{text-decoration:underline}
