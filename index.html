@@ -118,6 +118,9 @@ button,input,select,textarea{font-family:inherit}
 .stat .trend{font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:20px}
 .trend.up{color:var(--ok);background:var(--ok-bg)} .trend.down{color:var(--alert);background:var(--alert-bg)}
 .trend.warnp{color:var(--warn);background:var(--warn-bg)}
+.stat.statgo{cursor:pointer;text-align:left;font:inherit;color:inherit;transition:border-color .15s,transform .1s;width:100%}
+.stat.statgo:hover{border-color:var(--line-strong)}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:-4px}
 .stat .val{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1}
 .stat .cap{font-size:12.5px;color:var(--muted)}
 .cb{background:color-mix(in srgb,var(--c-blue) 15%,transparent);color:var(--c-blue)}
@@ -470,6 +473,54 @@ function Stats({contatos, editais, receber, certidoes}){
   );
 }
 
+/* ── Operação: orçamentos, pedidos e cobranças (somente leitura) ── */
+const ETAPAS_PADRAO = [
+  {id:'proposta',group:'comercial'},{id:'pendente',group:'pendente'},{id:'confeccao',group:'producao'},
+  {id:'entrega',group:'logistica'},{id:'entregue',group:'logistica'},
+];
+function grupoDaEtapa(id, todas){
+  const s = (todas||[]).find(x => x.id === id);
+  if(s && s.group) return s.group;
+  const d = ETAPAS_PADRAO.find(x => x.id === id);
+  if(d) return d.group;
+  if(/fatur/i.test(id) || (s && /fatur/i.test(s.label||''))) return 'faturamento';
+  return '';
+}
+function useEtapas(){
+  const [lista, setLista] = useState(null);
+  useEffect(() => {
+    if(!db) return;
+    const unsub = db.collection('config').doc('stages').onSnapshot(
+      snap => setLista(snap.exists && Array.isArray(snap.data().list) && snap.data().list.length ? snap.data().list : null),
+      () => setLista(null)
+    );
+    return () => { try{ unsub(); }catch(e){} };
+  }, []);
+  return lista || ETAPAS_PADRAO;
+}
+function Operacao({orcamentos, pedidos, receber, etapas}){
+  const somaValor = arr => arr.reduce((s,x)=>s+Number(x.valor||0),0);
+  const emAnalise = orcamentos.filter(o => (o.status||'analise') === 'analise');
+  const ativos = pedidos.filter(p => { const g = grupoDaEtapa(p.status, etapas); return g === 'pendente' || g === 'producao'; });
+  const aFaturar = pedidos.filter(p => grupoDaEtapa(p.status, etapas) === 'faturamento');
+  const vencidas = receber.filter(c => c.status !== 'recebido' && c.vencimento && diasAte(c.vencimento) < 0);
+  const card = (cls, icon, val, cap, sub, destino, extra) => (
+    <button type="button" className="stat statgo" onClick={() => go({key:destino})}>
+      <div className="row1"><div className={'chip ' + cls}><Icon name={icon} /></div>{extra}</div>
+      <div className="val tnum">{val}</div><div className="cap">{cap}</div>
+      {sub && <div className="sub tnum">{sub}</div>}
+    </button>
+  );
+  return (
+    <section className="stats">
+      {card('cs','trending', emAnalise.length, 'Orçamentos em análise', fmtBRL(somaValor(emAnalise)), 'vendas')}
+      {card('cb','package', ativos.length, 'Pedidos em andamento', 'Pendentes e em produção', 'pedidos')}
+      {card('cg','wallet', aFaturar.length, 'Aguardando faturamento', fmtBRL(somaValor(aFaturar)), 'pedidos')}
+      {card('cr','alert', vencidas.length, 'Recebimentos vencidos', fmtBRL(somaValor(vencidas)), 'financeiro', vencidas.length>0 && <span className="trend down">atenção</span>)}
+    </section>
+  );
+}
+
 /* ── Certidões ── */
 function certPill(c){
   const d = diasAte(c.validade);
@@ -692,6 +743,9 @@ function App(){
   const receber = useCol('contas_receber');
   const estoque = useCol('estoque_itens');
   const movs = useCol('estoque_movimentacoes');
+  const orcamentos = useCol('orcamentos');
+  const pedidos = useCol('pedidos');
+  const etapas = useEtapas();
 
   return (
     <div className="app">
@@ -700,6 +754,7 @@ function App(){
         <Topbar />
         <div className="wrap">
           <div className="main">
+            <Operacao orcamentos={orcamentos.items} pedidos={pedidos.items} receber={receber.items} etapas={etapas} />
             <Stats contatos={contatos.items} editais={editais.items} receber={receber.items} certidoes={certidoes.items} />
             <section className="two">
               <CertidoesCard items={certidoes.items} loading={certidoes.loading} />
