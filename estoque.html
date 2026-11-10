@@ -537,26 +537,27 @@ function MovDialog({tipo: tipoInicial, itens, initial, onClose, onSaved}) {
         descricao: form.descricao.trim(),
         data: new Date(form.data + 'T12:00:00'),
       };
-      if (isEdit) {
-        await db.collection('estoque_movimentacoes').doc(initial.id).update(data);
-      } else {
-        data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection('estoque_movimentacoes').add(data);
-      }
-      // Atualiza qtdAtual do item
-      if (item) {
-        const currentQtd = parseFloat(item.qtdAtual) || 0;
-        let newQtd;
-        if (isEdit) {
-          // Reverter movimentação anterior e aplicar nova
-          const oldQty = parseFloat(initial.quantidade) || 0;
-          const revert = initial.tipo === 'entrada' ? currentQtd - oldQty : currentQtd + oldQty;
-          newQtd = form.tipo === 'entrada' ? revert + qty : revert - qty;
-        } else {
-          newQtd = form.tipo === 'entrada' ? currentQtd + qty : currentQtd - qty;
+      // Movimentação e quantidade do item são gravadas juntas, numa transação:
+      // a quantidade é lida do banco (não da tela), então duas pessoas ao mesmo tempo não se atropelam.
+      const sinal = (tipo, q) => (tipo === 'entrada' ? q : -q);
+      const movRef = isEdit ? db.collection('estoque_movimentacoes').doc(initial.id) : db.collection('estoque_movimentacoes').doc();
+      if (!isEdit) data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+      await db.runTransaction(async tx => {
+        const mudancas = {};
+        if (item) mudancas[form.itemId] = sinal(form.tipo, qty);
+        if (isEdit && initial.itemId) {
+          mudancas[initial.itemId] = (mudancas[initial.itemId] || 0) - sinal(initial.tipo, parseFloat(initial.quantidade) || 0);
         }
-        await db.collection('estoque_itens').doc(form.itemId).update({qtdAtual: Math.max(0, newQtd)});
-      }
+        const ids = Object.keys(mudancas);
+        const snaps = {};
+        for (const id of ids) snaps[id] = await tx.get(db.collection('estoque_itens').doc(id));
+        if (isEdit) tx.update(movRef, data); else tx.set(movRef, data);
+        for (const id of ids) {
+          if (!snaps[id].exists || !mudancas[id]) continue;
+          const atual = parseFloat(snaps[id].data().qtdAtual) || 0;
+          tx.update(snaps[id].ref, { qtdAtual: Math.max(0, atual + mudancas[id]) });
+        }
+      });
       onSaved();
     } catch(e) {
       console.error(e);
@@ -568,15 +569,18 @@ function MovDialog({tipo: tipoInicial, itens, initial, onClose, onSaved}) {
     if (!(await confirmarLixeira('Esta movimentação', 'A quantidade do item será revertida.'))) return;
     setSaving(true);
     try {
-      // Reverte quantidade
-      const item = itens.find(i => i.id === initial.itemId);
-      if (item) {
-        const currentQtd = parseFloat(item.qtdAtual) || 0;
-        const qty = parseFloat(initial.quantidade) || 0;
-        const newQtd = initial.tipo === 'entrada' ? currentQtd - qty : currentQtd + qty;
-        await db.collection('estoque_itens').doc(initial.itemId).update({qtdAtual: Math.max(0, newQtd)});
-      }
-      await db.collection('estoque_movimentacoes').doc(initial.id).update(lixeiraCampos());
+      // Reverte a quantidade e move a movimentação para a lixeira na mesma transação.
+      const qty = parseFloat(initial.quantidade) || 0;
+      const reverter = initial.tipo === 'entrada' ? -qty : qty;
+      await db.runTransaction(async tx => {
+        const itemRef = initial.itemId ? db.collection('estoque_itens').doc(initial.itemId) : null;
+        const snap = itemRef ? await tx.get(itemRef) : null;
+        tx.update(db.collection('estoque_movimentacoes').doc(initial.id), lixeiraCampos());
+        if (snap && snap.exists) {
+          const atual = parseFloat(snap.data().qtdAtual) || 0;
+          tx.update(itemRef, { qtdAtual: Math.max(0, atual + reverter) });
+        }
+      });
       onSaved();
     } catch(e) {
       console.error(e);
