@@ -71,6 +71,9 @@ button,input,select,textarea{font-family:inherit}
 .btn.danger:hover{background:var(--alert-bg)}
 .btn.sm{height:30px;font-size:12px;padding:0 10px}
 .btn[disabled]{opacity:.5;cursor:default}
+.gp-box{display:grid;gap:8px;background:var(--col);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.gp-box div{display:flex;justify-content:space-between;gap:16px;font-size:13.5px}
+.gp-box span{color:var(--muted)}
 .vinc{margin:5px 0 0;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
 .vinc.ok{color:var(--ok);font-weight:600}
 .numi{display:inline-block;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700;color:var(--ink-2)}
@@ -350,6 +353,68 @@ const STATUS_META = {
 };
 function statusCls(s) { return s === 'aprovado' ? 'ok' : s === 'nao_aprovado' ? 'alert' : 'warn'; }
 
+/* ── Gerar pedido a partir de um orçamento aprovado ───────── */
+/* Primeira etapa que não é do grupo "Comercial" (mesma regra de "Novo pedido" no app Pedidos). */
+const PEDIDOS_ETAPAS_PADRAO = [
+  { id:"proposta",  group:"comercial" }, { id:"pendente",  group:"pendente" }, { id:"confeccao", group:"producao" },
+  { id:"entrega",   group:"logistica" }, { id:"entregue",  group:"logistica" },
+];
+function grupoDaEtapa(id, todas) {
+  const s = (todas || []).find(x => x.id === id);
+  if (s && s.group) return s.group;
+  const d = PEDIDOS_ETAPAS_PADRAO.find(x => x.id === id);
+  if (d) return d.group;
+  if (/fatur/i.test(id) || (s && /fatur/i.test(s.label || ""))) return "faturamento";
+  return "";
+}
+function useDocData(col, id) {
+  const [data, setData] = useState(undefined); // undefined = carregando
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection(col).doc(id).onSnapshot(
+      snap => setData(snap.exists ? snap.data() : null),
+      () => setData(null)
+    );
+    return unsub;
+  }, [col, id]);
+  return data;
+}
+function etapaInicialPedido(stagesDoc) {
+  const lista = (stagesDoc && Array.isArray(stagesDoc.list) && stagesDoc.list.length) ? stagesDoc.list : PEDIDOS_ETAPAS_PADRAO;
+  const usavel = lista.find(s => grupoDaEtapa(s.id, lista) !== 'comercial');
+  return (usavel || lista[0] || {}).id || 'pendente';
+}
+function montarPedidoDoOrcamento(o, id, status) {
+  const itens = Array.isArray(o.itens) && o.itens.length ? o.itens : [];
+  const unico = itens.length === 1 ? itens[0] : null;
+  const resumoItens = itens.length > 1
+    ? 'Itens do orçamento:\n' + itens.map(it => '• ' + (it.descricao || 'Item') + ' — ' + (it.quantidade || 0) + ' × ' + fmtBRL(it.valorUnit || 0)).join('\n')
+    : '';
+  const obs = [(o.observacoes || '').trim(), resumoItens].filter(Boolean).join('\n\n');
+  const quem = (firebase.auth().currentUser || {}).email || '';
+  return {
+    id,
+    numero: o.numero || '',
+    cliente: o.cliente || '',
+    descricao: o.descricao || (unico && unico.descricao) || (itens[0] && itens[0].descricao) || 'Pedido gerado do orçamento',
+    quantidade: unico ? (unico.quantidade ?? '') : '',
+    valorUnit: unico ? (unico.valorUnit ?? '') : '',
+    valor: Number(o.valor || 0),
+    custo: '', frete: '', despesas: '',
+    prazo: o.prazo || '',
+    status,
+    prioridade: o.prioridade || 'media',
+    responsavel: o.responsavel || '',
+    observacoes: obs,
+    extras: {},
+    origemOrcamentoId: o.id,
+    origemOrcamentoNumero: o.numeroInterno || '',
+    criadoEm: new Date().toISOString(),
+    criadoPor: quem, alteradoPor: quem,
+    historico: [{ data: new Date().toISOString(), acao: 'Criado', detalhes: 'Gerado a partir do orçamento ' + (o.numeroInterno || o.cliente || '') }],
+  };
+}
+
 /* ── Header ──────────────────────────────── */
 const ACTIVE = "vendas";
 const NAV_ITEMS = [
@@ -415,7 +480,7 @@ function Header() {
 }
 
 /* ── Generic Dialog ──────────────────────── */
-function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
+function Dialog({title, onClose, onSave, onDelete, saving, err, children, saveLabel}) {
   return (
     <div className="ov" onClick={e => {if(e.target===e.currentTarget) onClose();}}>
       <div className="dlg" role="dialog" aria-modal="true">
@@ -431,7 +496,7 @@ function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
           <div>{onDelete && <button className="btn danger" onClick={onDelete} disabled={saving}><Icon name="trash"/> Excluir</button>}</div>
           <div className="right">
             <button className="btn" onClick={onClose}>Cancelar</button>
-            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
+            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : (saveLabel || 'Salvar')}</button>
           </div>
         </div>
       </div>
@@ -687,6 +752,32 @@ function App() {
   const [filtro, setFiltro] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const stagesDoc = useDocData('config', 'stages');
+  const [gerar, setGerar] = useState(null);      // orçamento escolhido para virar pedido
+  const [gerando, setGerando] = useState(false);
+  const [gerarErr, setGerarErr] = useState('');
+  async function confirmarGerarPedido() {
+    if (!gerar) return;
+    setGerando(true); setGerarErr('');
+    try {
+      const orcRef = db.collection('orcamentos').doc(gerar.id);
+      const pedId = 'PED-' + Date.now().toString().slice(-7);
+      const pedRef = db.collection('pedidos').doc(pedId);
+      await db.runTransaction(async tx => {
+        const orcSnap = await tx.get(orcRef);
+        const pedSnap = await tx.get(pedRef);
+        if (!orcSnap.exists) throw new Error('Orçamento não encontrado.');
+        if (orcSnap.data().pedidoId) throw new Error('Este orçamento já gerou um pedido.');
+        if (pedSnap.exists) throw new Error('Conflito de número do pedido. Tente de novo.');
+        tx.set(pedRef, montarPedidoDoOrcamento({...orcSnap.data(), id: gerar.id}, pedId, etapaInicialPedido(stagesDoc)));
+        tx.update(orcRef, {pedidoId: pedId, pedidoGeradoEm: firebase.firestore.FieldValue.serverTimestamp()});
+      });
+      setGerar(null);
+    } catch (e) {
+      console.error(e);
+      setGerarErr(e && e.message ? e.message : 'Não foi possível gerar o pedido.');
+    } finally { setGerando(false); }
+  }
 
   const porStatus = (s) => items.filter(o => o.status === s);
   const totalDe = (arr) => arr.reduce((s,o) => s + Number(o.valor||0), 0);
@@ -750,7 +841,11 @@ function App() {
                           <td>{o.data || '—'}</td>
                           <td>{o.validade || '—'}</td>
                           <td><span className={"status " + statusCls(o.status)}><span className={"dot " + statusCls(o.status)}></span>{STATUS_META[o.status]?.label || o.status}</span></td>
-                          <td><button className="btn sm" onClick={() => {setEditItem(o); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button></td>
+                          <td style={{whiteSpace:'nowrap'}}>
+                            {o.status === 'aprovado' && !o.pedidoId && <button className="btn sm" style={{marginRight:6}} onClick={() => {setGerarErr(''); setGerar(o);}}><Icon name="plus" style={{width:13,height:13}}/> Gerar pedido</button>}
+                            {o.pedidoId && <span className="numi" style={{marginRight:8,color:'var(--ok)'}} title={'Pedido ' + o.pedidoId}>✓ Pedido gerado</span>}
+                            <button className="btn sm" onClick={() => {setEditItem(o); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -762,6 +857,18 @@ function App() {
         )}
       </main>
       {showForm && <OrcamentoForm data={editItem} onClose={() => setShowForm(false)} />}
+      {gerar && (
+        <Dialog title="Gerar pedido a partir deste orçamento?" onClose={() => !gerando && setGerar(null)} onSave={confirmarGerarPedido} saving={gerando} err={gerarErr} saveLabel="Gerar pedido">
+          <div className="form">
+            <div className="gp-box">
+              <div><span>Orçamento</span><b>{gerar.numeroInterno || '—'}</b></div>
+              <div><span>Cliente</span><b>{gerar.cliente}</b></div>
+              <div><span>Valor</span><b>{fmtBRL(gerar.valor)}</b></div>
+            </div>
+            <p style={{margin:0,color:'var(--ink-2)',fontSize:13.5,lineHeight:1.5}}>Vai criar um pedido novo na primeira etapa do app Pedidos e marcar este orçamento como "Pedido gerado". O orçamento não é alterado além dessa marca, e o pedido pode ser editado depois em Pedidos.</p>
+          </div>
+        </Dialog>
+      )}
     </>
   );
 }

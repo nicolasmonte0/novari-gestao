@@ -163,6 +163,16 @@ button,input,select,textarea{font-family:inherit}
 .inp:focus{border-color:var(--accent);outline:none}
 select.inp{appearance:auto}
 .err{color:var(--alert);font-size:12.5px;margin:-4px 0 0}
+.gc-list{display:grid;gap:6px;max-height:340px;overflow:auto}
+.gc-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--surface)}
+.gc-row:hover{background:var(--hover)}
+.gc-row input{width:16px;height:16px;flex:none}
+.gc-main{display:flex;flex-direction:column;min-width:0;flex:1}
+.gc-main b{font-size:13.5px}
+.gc-main small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-val{font-weight:700;font-variant-numeric:tabular-nums;font-size:13.5px}
+.gc-tot{display:flex;justify-content:space-between;font-size:13.5px;padding:2px 4px}
+.gc-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;font-size:11px;font-weight:700;color:#fff;background:var(--brand-red,#CE1B21);border-radius:20px}
 .empty{color:var(--muted);padding:30px 0;text-align:center}
 .loading{color:var(--muted);padding:30px 0;text-align:center}
 .nf-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none}
@@ -429,7 +439,7 @@ function Header() {
 }
 
 /* ── Generic Dialog ──────────────────────── */
-function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
+function Dialog({title, onClose, onSave, onDelete, saving, err, children, saveLabel}) {
   return (
     <div className="ov" onClick={e => {if(e.target===e.currentTarget) onClose();}}>
       <div className="dlg" role="dialog" aria-modal="true">
@@ -445,7 +455,7 @@ function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
           <div>{onDelete && <button className="btn danger" onClick={onDelete} disabled={saving}><Icon name="trash"/> Excluir</button>}</div>
           <div className="right">
             <button className="btn" onClick={onClose}>Cancelar</button>
-            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
+            <button className="btn primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : (saveLabel || 'Salvar')}</button>
           </div>
         </div>
       </div>
@@ -608,14 +618,110 @@ function ContaPagarForm({data, onClose}) {
   );
 }
 
+/* ── Pedidos faturados → contas a receber ─────────────── */
+const PEDIDOS_ETAPAS_PADRAO = [
+  { id:"proposta",  group:"comercial" }, { id:"pendente",  group:"pendente" }, { id:"confeccao", group:"producao" },
+  { id:"entrega",   group:"logistica" }, { id:"entregue",  group:"logistica" },
+];
+function grupoDaEtapa(id, todas) {
+  const s = (todas || []).find(x => x.id === id);
+  if (s && s.group) return s.group;
+  const d = PEDIDOS_ETAPAS_PADRAO.find(x => x.id === id);
+  if (d) return d.group;
+  if (/fatur/i.test(id) || (s && /fatur/i.test(s.label || ""))) return "faturamento";
+  return "";
+}
+function useDocData(col, id) {
+  const [data, setData] = useState(undefined);
+  useEffect(() => {
+    if (!db) return;
+    const unsub = db.collection(col).doc(id).onSnapshot(
+      snap => setData(snap.exists ? snap.data() : null),
+      () => setData(null)
+    );
+    return unsub;
+  }, [col, id]);
+  return data;
+}
+function GerarContaDialog({pedidos, onClose}) {
+  const [sel, setSel] = useState(() => pedidos.map(p => p.id));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const toggle = id => setSel(l => l.includes(id) ? l.filter(x => x !== id) : [...l, id]);
+  const escolhidos = pedidos.filter(p => sel.includes(p.id));
+  const total = escolhidos.reduce((a, p) => a + (Number(p.valor) || 0), 0);
+
+  async function gerar() {
+    if (!escolhidos.length) { setErr('Marque ao menos um pedido.'); return; }
+    setSaving(true); setErr('');
+    const quem = (firebase.auth().currentUser || {}).email || '';
+    let feitos = 0;
+    try {
+      for (const p of escolhidos) {
+        const pedRef = db.collection('pedidos').doc(p.id);
+        const contaRef = db.collection('contas_receber').doc();
+        await db.runTransaction(async tx => {
+          const snap = await tx.get(pedRef);
+          if (!snap.exists) throw new Error('Pedido ' + p.id + ' não encontrado.');
+          if (snap.data().contaReceberId) return; // já gerado por outra aba/pessoa
+          const d = snap.data();
+          tx.set(contaRef, {
+            cliente: d.cliente || '', tipo: 'pedido', vencimento: '', valor: Number(d.valor) || 0,
+            status: 'pendente', dataRecebimento: '',
+            observacao: 'Pedido ' + p.id + (d.numero ? ' · Nº ' + d.numero : '') + (d.descricao ? ' · ' + d.descricao : ''),
+            pedidoId: p.id,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            criadoPor: quem, alteradoPor: quem,
+          });
+          tx.update(pedRef, {contaReceberId: contaRef.id});
+        });
+        feitos++;
+      }
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setErr((feitos ? feitos + ' conta(s) criada(s). ' : '') + 'Não foi possível concluir: ' + (e && e.message ? e.message : 'erro desconhecido'));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog title="Gerar contas a receber de pedidos faturados" onClose={() => !saving && onClose()} onSave={gerar} saving={saving} err={err} saveLabel={'Gerar ' + escolhidos.length + (escolhidos.length === 1 ? ' conta' : ' contas')}>
+      <div className="form">
+        {pedidos.length === 0 ? <div className="empty">Nenhum pedido faturado sem conta a receber.</div> : (
+          <>
+            <p style={{margin:0,color:'var(--ink-2)',fontSize:13.5,lineHeight:1.5}}>Marque os pedidos que devem virar conta a receber. O vencimento fica em branco para você preencher depois.</p>
+            <div className="gc-list">
+              {pedidos.map(p => (
+                <label className="gc-row" key={p.id}>
+                  <input type="checkbox" checked={sel.includes(p.id)} onChange={() => toggle(p.id)} />
+                  <span className="gc-main"><b>{p.cliente || '(sem cliente)'}</b><small>{p.id}{p.numero ? ' · Nº ' + p.numero : ''}{p.descricao ? ' · ' + p.descricao : ''}</small></span>
+                  <span className="gc-val">{fmtBRL(p.valor)}</span>
+                </label>
+              ))}
+            </div>
+            <div className="gc-tot"><span>{escolhidos.length} selecionado(s)</span><b>{fmtBRL(total)}</b></div>
+          </>
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
 /* ── CONTAS A RECEBER TAB ───────────────── */
 function ContasReceberTab() {
   const {items, loading} = useCollection('contas_receber');
   const [editItem, setEditItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [filtro, setFiltro] = useState('todas');
+  const pedidosCol = useCollection('pedidos');
+  const stagesDoc = useDocData('config', 'stages');
+  const [gerarOpen, setGerarOpen] = useState(false);
 
   if (loading) return <div className="loading">Carregando…</div>;
+
+  const etapas = (stagesDoc && Array.isArray(stagesDoc.list) && stagesDoc.list.length) ? stagesDoc.list : PEDIDOS_ETAPAS_PADRAO;
+  const faturados = pedidosCol.items.filter(p => grupoDaEtapa(p.status, etapas) === 'faturamento' && !p.contaReceberId);
 
   const itemsComStatus = items.map(c => ({...c, _status: contaStatus(c.vencimento, c.status)}));
   const filtered = filtro === 'todas' ? itemsComStatus :
@@ -639,7 +745,10 @@ function ContasReceberTab() {
       <div className="card">
         <div className="card-h">
           <h2><Icon name="arrow-up"/> Contas a Receber</h2>
-          <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Nova Fatura</button>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <button className="btn" onClick={() => setGerarOpen(true)} disabled={pedidosCol.loading}><Icon name="plus"/> Gerar de pedidos faturados{faturados.length > 0 && <span className="gc-badge">{faturados.length}</span>}</button>
+            <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Nova Fatura</button>
+          </div>
         </div>
         <div className="filter-row">
           {[['todas','Todas'],['pendentes','Pendentes'],['vencidas','Vencidas'],['recebidas','Recebidas']].map(([k,l]) => (
@@ -671,6 +780,7 @@ function ContasReceberTab() {
         )}
       </div>
       {showForm && <ContaReceberForm data={editItem} onClose={() => setShowForm(false)} />}
+      {gerarOpen && <GerarContaDialog pedidos={faturados} onClose={() => setGerarOpen(false)} />}
     </>
   );
 }
