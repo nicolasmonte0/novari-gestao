@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
-<script type="text/babel" src="auth-gate.js?v=20261110b"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" integrity="sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" integrity="sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js" integrity="sha384-r5Ldzi45mT2cLBHDFFiSsTooTu4rFdkBdx9D50zWqSmJ8FLuJkQQTF7h6ERx/NX0" crossorigin="anonymous"></script>
+<script type="text/babel" src="auth-gate.js?v=20261111a"></script>
 <script src="mobile.js?v=20261110c"></script>
 <link rel="stylesheet" href="novari.css?v=20261110e">
 <style>
@@ -913,11 +913,11 @@ function PedidosApp() {
                     {v > 0 && <span className="sum">{formatBRL(v)}</span>}
                   </div>
                   {list.length === 0 && <p className="empty">Nenhum pedido nesta etapa.</p>}
-                  {list.map(o => (
+                  <Paginado itens={list} por={40}>{o => (
                     <OrderCard key={o.id} o={o} stage={s}
                       onOpen={() => openDetail(o)} onEdit={() => openEdit(o)} onDel={() => setConfirmDel(o.id)}
                       onNext={() => s.next && moveTo(o, s.next)} onPrev={() => s.prev && moveTo(o, s.prev)} />
-                  ))}
+                  )}</Paginado>
                 </section>
               );
             })}

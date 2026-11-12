@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
-<script type="text/babel" src="auth-gate.js?v=20261110b"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" integrity="sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" integrity="sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js" integrity="sha384-r5Ldzi45mT2cLBHDFFiSsTooTu4rFdkBdx9D50zWqSmJ8FLuJkQQTF7h6ERx/NX0" crossorigin="anonymous"></script>
+<script type="text/babel" src="auth-gate.js?v=20261111a"></script>
 <script src="mobile.js?v=20261110c"></script>
 <link rel="stylesheet" href="novari.css?v=20261110e">
 <style>
@@ -246,21 +246,19 @@ function Icon({name, className, style}) {
 function fmtDate(d) {
   if (!d) return '—';
   if (d.toDate) d = d.toDate();
-  if (typeof d === 'string') d = new Date(d);
+  if (typeof d === 'string') d = NovariData.parse(d);
+  if (!d || isNaN(d)) return '—';
   const dd = String(d.getDate()).padStart(2,'0');
   const mm = String(d.getMonth()+1).padStart(2,'0');
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 function parseDateBR(s) {
-  if (!s) return null;
-  const p = s.split('/');
-  if (p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
-  return new Date(s);
+  return NovariData.parse(s);
 }
 function diasAte(dateStr) {
   if (!dateStr) return 999;
   const d = parseDateBR(dateStr);
-  if (isNaN(d)) return 999;
+  if (!d || isNaN(d)) return 999;
   return Math.ceil((d - new Date()) / 86400000);
 }
 function fmtBRL(v) {
@@ -436,7 +434,7 @@ function ContasPagarTab() {
             <table className="tbl">
               <thead><tr><th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
               <tbody>
-                {sorted.map(c => {
+                <Paginado itens={sorted} por={50} colSpan={7}>{c => {
                   const st = c._status;
                   const isPago = st === 'pago';
                   return (
@@ -444,13 +442,13 @@ function ContasPagarTab() {
                       <td style={{fontWeight:600}}>{c.descricao}</td>
                       <td><span className={`tipo ${c.categoria||'variavel'}`}>{c.categoria === 'fixa' ? 'Fixa' : 'Variável'}</span></td>
                       <td>{c.fornecedor || '—'}</td>
-                      <td>{c.vencimento || '—'}</td>
+                      <td>{NovariData.mostrar(c.vencimento)}</td>
                       <td style={{fontWeight:600, color: isPago ? 'var(--muted)' : 'var(--alert)', textDecoration: isPago ? 'line-through' : 'none'}}>{fmtBRL(c.valor)}</td>
                       <td><span className={`status ${statusCls(st)}`}><span className={`dot ${statusCls(st)}`}></span> {statusLabel(st)}</span></td>
                       <td><button className="btn sm" onClick={() => {setEditItem(c); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button></td>
                     </tr>
                   );
-                })}
+                }}</Paginado>
               </tbody>
             </table>
           </div>
@@ -512,7 +510,7 @@ function ContaPagarForm({data, onClose}) {
           <div className="f"><label>Fornecedor</label><input className="inp" value={form.fornecedor} onChange={e=>set('fornecedor',e.target.value)} placeholder="Ex: Imobiliária Norte"/></div>
         </div>
         <div className="row2">
-          <div className="f"><label>Vencimento (dd/mm/aaaa)</label><input className="inp" value={form.vencimento} onChange={e=>set('vencimento',e.target.value)} placeholder="05/11/2026"/></div>
+          <div className="f"><label>Vencimento</label><CampoData className="inp" value={form.vencimento} onChange={v=>set('vencimento',v)} /></div>
           <div className="f"><label>Valor (R$) *</label><input className="inp" type="number" step="0.01" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="4500.00"/></div>
         </div>
         <div className="row2">
@@ -523,7 +521,7 @@ function ContaPagarForm({data, onClose}) {
               <option value="pago">Pago</option>
             </select>
           </div>
-          <div className="f"><label>Data Pagamento</label><input className="inp" value={form.dataPagamento} onChange={e=>set('dataPagamento',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+          <div className="f"><label>Data Pagamento</label><CampoData className="inp" value={form.dataPagamento} onChange={v=>set('dataPagamento',v)} /></div>
         </div>
         <div className="f"><label>Observação</label><input className="inp" value={form.observacao} onChange={e=>set('observacao',e.target.value)} placeholder="Notas adicionais"/></div>
       </div>
@@ -673,20 +671,20 @@ function ContasReceberTab() {
             <table className="tbl">
               <thead><tr><th>Cliente / Descrição</th><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
               <tbody>
-                {sorted.map(c => {
+                <Paginado itens={sorted} por={50} colSpan={6}>{c => {
                   const st = c._status;
                   const isRecebido = st === 'recebido';
                   return (
                     <tr key={c.id}>
                       <td style={{fontWeight:600}}>{c.cliente}</td>
                       <td><span className={`tipo ${c.tipo||'pedido'}`}>{c.tipo === 'servico' ? 'Serviço' : 'Pedido'}</span></td>
-                      <td>{c.vencimento || '—'}</td>
+                      <td>{NovariData.mostrar(c.vencimento)}</td>
                       <td style={{fontWeight:600, color: isRecebido ? 'var(--muted)' : 'var(--ok)', textDecoration: isRecebido ? 'line-through' : 'none'}}>{fmtBRL(c.valor)}</td>
                       <td><span className={`status ${statusCls(st)}`}><span className={`dot ${statusCls(st)}`}></span> {statusLabel(st)}</span></td>
                       <td><button className="btn sm" onClick={() => {setEditItem(c); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button></td>
                     </tr>
                   );
-                })}
+                }}</Paginado>
               </tbody>
             </table>
           </div>
@@ -745,7 +743,7 @@ function ContaReceberForm({data, onClose}) {
               <option value="servico">Serviço</option>
             </select>
           </div>
-          <div className="f"><label>Vencimento (dd/mm/aaaa)</label><input className="inp" value={form.vencimento} onChange={e=>set('vencimento',e.target.value)} placeholder="20/11/2026"/></div>
+          <div className="f"><label>Vencimento</label><CampoData className="inp" value={form.vencimento} onChange={v=>set('vencimento',v)} /></div>
         </div>
         <div className="row2">
           <div className="f"><label>Valor (R$) *</label><input className="inp" type="number" step="0.01" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="15800.00"/></div>
@@ -757,7 +755,7 @@ function ContaReceberForm({data, onClose}) {
             </select>
           </div>
         </div>
-        <div className="f"><label>Data Recebimento</label><input className="inp" value={form.dataRecebimento} onChange={e=>set('dataRecebimento',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+        <div className="f"><label>Data Recebimento</label><CampoData className="inp" value={form.dataRecebimento} onChange={v=>set('dataRecebimento',v)} /></div>
         <div className="f"><label>Observação</label><input className="inp" value={form.observacao} onChange={e=>set('observacao',e.target.value)} placeholder="Notas adicionais"/></div>
       </div>
     </Dialog>
@@ -801,7 +799,7 @@ function NotasFiscaisTab({tipo}) {
                   <tr key={n.id}>
                     <td style={{fontWeight:600}}>{n.numero || '—'}</td>
                     <td>{n.parte || '—'}</td>
-                    <td>{n.emissao || '—'}</td>
+                    <td>{NovariData.mostrar(n.emissao)}</td>
                     <td style={{fontWeight:600}}>{fmtBRL(n.valor)}</td>
                     <td>{isValidUrl(n.linkDrive)
                       ? <a className="nf-link" href={n.linkDrive.trim()} target="_blank" rel="noopener"><Icon name="folder" style={{width:13,height:13}}/> Abrir</a>
@@ -861,7 +859,7 @@ function NotaFiscalForm({tipo, data, onClose}) {
       <div className="form">
         <div className="row2">
           <div className="f"><label>Número da nota *</label><input className="inp" value={form.numero} onChange={e=>set('numero',e.target.value)} placeholder="Ex: 12.458"/></div>
-          <div className="f"><label>Data de emissão</label><input className="inp" value={form.emissao} onChange={e=>set('emissao',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+          <div className="f"><label>Data de emissão</label><CampoData className="inp" value={form.emissao} onChange={v=>set('emissao',v)} /></div>
         </div>
         <div className="f"><label>{label}</label><input className="inp" value={form.parte} onChange={e=>set('parte',e.target.value)} placeholder={tipo === 'entrada' ? 'Ex: Gráfica Insumos Norte Ltda.' : 'Ex: Prefeitura Municipal'}/></div>
         <div className="f"><label>Valor (R$) *</label><input className="inp" type="number" step="0.01" value={form.valor} onChange={e=>set('valor',e.target.value)} placeholder="1240.00"/></div>

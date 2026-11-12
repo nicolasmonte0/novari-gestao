@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
-<script type="text/babel" src="auth-gate.js?v=20261110b"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" integrity="sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" integrity="sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js" integrity="sha384-r5Ldzi45mT2cLBHDFFiSsTooTu4rFdkBdx9D50zWqSmJ8FLuJkQQTF7h6ERx/NX0" crossorigin="anonymous"></script>
+<script type="text/babel" src="auth-gate.js?v=20261111a"></script>
 <script src="mobile.js?v=20261110c"></script>
 <link rel="stylesheet" href="novari.css?v=20261110e">
 <style>
@@ -187,17 +187,7 @@ function Icon({name, className, style}) {
 }
 
 /* ── Helpers (iguais aos dos módulos) ── */
-function toDateAny(v){
-  if(!v) return null;
-  if(v.toDate){ try{ return v.toDate(); }catch(e){ return null; } }
-  if(v instanceof Date) return v;
-  if(typeof v === 'string'){
-    const p = v.split('/');
-    if(p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
-    const d = new Date(v); return isNaN(d) ? null : d;
-  }
-  return null;
-}
+function toDateAny(v){ return NovariData.parse(v); }
 function diasAte(v){ const d = toDateAny(v); if(!d || isNaN(d)) return 999; return Math.ceil((d - new Date())/86400000); }
 function fmtBRL(v){ return 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function fmtDDMM(v){ const d = toDateAny(v); if(!d || isNaN(d)) return '—'; return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
@@ -449,7 +439,7 @@ function CertidoesCard({items, loading}){
          sorted.length === 0 ? <div className="empty">Nenhuma certidão cadastrada.<br/>Adicione documentos no módulo Administrativo para acompanhar os vencimentos aqui.</div> :
          <div className="lst">{sorted.map(c => (
            <div className="lrow" key={c.id}>
-             <div className="lmain"><div className="l1">{c.nome || 'Certidão'}</div><div className="l2">Validade {c.validade || '—'}</div></div>
+             <div className="lmain"><div className="l1">{c.nome || 'Certidão'}</div><div className="l2">Validade {NovariData.mostrar(c.validade)}</div></div>
              <div className="lright">{certPill(c)}</div>
            </div>
          ))}</div>}

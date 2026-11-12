@@ -164,3 +164,84 @@ window.novariErroLeitura = function (nome, err) {
     com(FS.WriteBatch && FS.WriteBatch.prototype, 'set', 1, semMerge);
   } catch (e) { console.warn('Registro de autoria indisponível:', e); }
 })();
+
+/* ---------- Datas (compartilhado por todas as telas) ---------- */
+/* Datas novas passam a ser guardadas como AAAA-MM-DD (data real, ordena certo e não depende de digitação).
+   Datas antigas (dd/mm/aaaa digitadas à mão) continuam sendo lidas normalmente e só mudam se você editar o registro e mexer na data. */
+window.NovariData = (function () {
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function valida(y, m, d) {
+    var x = new Date(y, m - 1, d);
+    return (x.getFullYear() === y && x.getMonth() === m - 1 && x.getDate() === d) ? x : null;
+  }
+  function estrito(v) {
+    if (v == null || v === '') return null;
+    if (typeof v.toDate === 'function') { try { v = v.toDate(); } catch (e) { return null; } }
+    if (v instanceof Date) return isNaN(v) ? null : v;
+    var s = String(v).trim(), m;
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s))) return valida(+m[1], +m[2], +m[3]);
+    if (/^\d{4}-\d{2}-\d{2}[T\s]/.test(s)) { var dt = new Date(s); return isNaN(dt) ? null : dt; }
+    if ((m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/.exec(s))) {
+      var y = +m[3]; if (m[3].length === 2) y += 2000;
+      return valida(y, +m[2], +m[1]);
+    }
+    return null;
+  }
+  /* Leitura tolerante (mantém o comportamento antigo para textos esquisitos) */
+  function parse(v) {
+    var d = estrito(v);
+    if (d) return d;
+    if (v == null || v === '' || typeof v !== 'string') return null;
+    var x = new Date(v);
+    return isNaN(x) ? null : x;
+  }
+  function iso(v) { var d = estrito(v); return d ? d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) : ''; }
+  function br(v) { var d = estrito(v); return d ? pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() : ''; }
+  function mostrar(v) { if (v == null || v === '') return '—'; return br(v) || String(v); }
+  function hoje() { return iso(new Date()); }
+  return {parse: parse, estrito: estrito, iso: iso, br: br, mostrar: mostrar, hoje: hoje};
+})();
+
+/* Campo de data: seletor de calendário que grava AAAA-MM-DD.
+   Se o registro antigo tiver um texto que não é data reconhecível, mantém um campo de texto (para não apagar nada) até você corrigir. */
+window.CampoData = function CampoData(props) {
+  var value = props.value, onChange = props.onChange;
+  var rest = Object.assign({}, props); delete rest.value; delete rest.onChange;
+  var valor = value == null ? '' : String(value);
+  var ehTexto = React.useState(function () { return !!(valor && !NovariData.iso(valor)); })[0];
+  if (ehTexto) {
+    return <input {...rest} value={valor} placeholder="dd/mm/aaaa" title="Este valor antigo não é uma data reconhecida. Digite dd/mm/aaaa."
+      style={Object.assign({}, rest.style, {borderColor: 'var(--warn)'})}
+      onChange={function (e) { onChange(e.target.value); }}
+      onBlur={function () { var i = NovariData.iso(valor); if (i) onChange(i); }} />;
+  }
+  return <input {...rest} type="date" value={NovariData.iso(valor)} onChange={function (e) { onChange(e.target.value); }} />;
+};
+
+/* ---------- Listas longas em blocos ---------- */
+/* Mostra os primeiros itens e um botão "Mostrar mais". Não mexe nos dados: busca e filtros continuam valendo sobre a lista inteira.
+   Uso: <Paginado itens={lista} por={50} colSpan={5}>{item => <tr key={item.id}>…</tr>}</Paginado>
+   (colSpan só em tabelas; em listas de cartões deixe sem colSpan.) */
+window.Paginado = function Paginado(props) {
+  var passo = props.por || 50;
+  var estado = React.useState(passo), n = estado[0], setN = estado[1];
+  var lista = props.itens || [];
+  var mostra = lista.slice(0, n);
+  var resto = lista.length - mostra.length;
+  var render = props.children;
+  var botao = (
+    <span style={{display: 'inline-flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center'}}>
+      <span style={{color: 'var(--muted)', fontSize: 12.5}}>Mostrando {mostra.length} de {lista.length}</span>
+      <button type="button" className="btn sm" onClick={function () { setN(n + passo); }}>Mostrar mais {Math.min(passo, resto)}</button>
+      {resto > passo && <button type="button" className="btn sm" onClick={function () { setN(lista.length); }}>Mostrar todos</button>}
+    </span>
+  );
+  return (
+    <React.Fragment>
+      {mostra.map(render)}
+      {resto > 0 && (props.colSpan
+        ? <tr className="pag-mais"><td colSpan={props.colSpan} style={{textAlign: 'center', padding: '12px 8px'}}>{botao}</td></tr>
+        : <div className="pag-mais" style={{gridColumn: '1 / -1', textAlign: 'center', padding: '10px 0'}}>{botao}</div>)}
+    </React.Fragment>
+  );
+};

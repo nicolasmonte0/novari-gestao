@@ -8,15 +8,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
-<script type="text/babel" src="auth-gate.js?v=20261110b"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" integrity="sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" integrity="sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js" integrity="sha384-r5Ldzi45mT2cLBHDFFiSsTooTu4rFdkBdx9D50zWqSmJ8FLuJkQQTF7h6ERx/NX0" crossorigin="anonymous"></script>
+<script type="text/babel" src="auth-gate.js?v=20261111a"></script>
 <script src="mobile.js?v=20261110c"></script>
-<script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="novari.css?v=20261110e">
 <style>
 
@@ -258,21 +258,19 @@ function Icon({name, className}) {
 function fmtDate(d) {
   if (!d) return '—';
   if (d.toDate) d = d.toDate();
-  if (typeof d === 'string') d = new Date(d);
+  if (typeof d === 'string') d = NovariData.parse(d);
+  if (!d || isNaN(d)) return '—';
   const dd = String(d.getDate()).padStart(2,'0');
   const mm = String(d.getMonth()+1).padStart(2,'0');
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 function parseDateBR(s) {
-  if (!s) return null;
-  const p = s.split('/');
-  if (p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
-  return new Date(s);
+  return NovariData.parse(s);
 }
 function diasAte(dateStr) {
   if (!dateStr) return 999;
   const d = parseDateBR(dateStr);
-  if (isNaN(d)) return 999;
+  if (!d || isNaN(d)) return 999;
   return Math.ceil((d - new Date()) / 86400000);
 }
 function certStatus(validade) {
@@ -893,9 +891,9 @@ function SmartDrop({currentTab}) {
             await db.collection('empresa').add({...data, criadoEm: ts});
           }
         } else {
-          if (e.tab === 'certidoes') data = {nome: e.nome.trim(), emissao: (e.emissao||'').trim(), validade: (e.validade||'').trim(), ...pdf};
+          if (e.tab === 'certidoes') data = {nome: e.nome.trim(), emissao: NovariData.iso(e.emissao) || (e.emissao||'').trim(), validade: NovariData.iso(e.validade) || (e.validade||'').trim(), ...pdf};
           else if (e.tab === 'documentos') data = {nome: e.nome.trim(), tipo:'pdf', formato:'PDF', tamanho: fmtFileSize(e.file.size), dataAtualizacao: (e.dataAtualizacao||'').trim(), ...pdf};
-          else data = {nome: e.nome.trim(), orgao: (e.orgao||'').trim(), validade: (e.validade||'').trim(), ...pdf};
+          else data = {nome: e.nome.trim(), orgao: (e.orgao||'').trim(), validade: NovariData.iso(e.validade) || (e.validade||'').trim(), ...pdf};
           if (ex) await db.collection(e.tab).doc(ex.id).update(data);
           else await db.collection(e.tab).add({...data, criadoEm: ts});
         }
@@ -985,10 +983,10 @@ function SmartDrop({currentTab}) {
                     </div>
                   )}
                   <div style={{gridColumn: '1 / -1'}}><label>Nome</label><input className="inp" value={e.nome} onChange={ev => upd(e.key, {nome: ev.target.value})}/></div>
-                  {e.tab === 'certidoes' && <><div><label>Emissão</label><input className="inp" value={e.emissao || ''} onChange={ev => upd(e.key, {emissao: ev.target.value})} placeholder="dd/mm/aaaa"/></div>
-                    <div><label>Validade</label><input className="inp" value={e.validade || ''} onChange={ev => upd(e.key, {validade: ev.target.value})} placeholder="dd/mm/aaaa"/></div></>}
+                  {e.tab === 'certidoes' && <><div><label>Emissão</label><CampoData className="inp" value={e.emissao || ''} onChange={v => upd(e.key, {emissao: v})} /></div>
+                    <div><label>Validade</label><CampoData className="inp" value={e.validade || ''} onChange={v => upd(e.key, {validade: v})} /></div></>}
                   {e.tab === 'licencas' && <><div><label>Órgão</label><input className="inp" value={e.orgao || ''} onChange={ev => upd(e.key, {orgao: ev.target.value})}/></div>
-                    <div><label>Validade</label><input className="inp" value={e.validade || ''} onChange={ev => upd(e.key, {validade: ev.target.value})} placeholder="dd/mm/aaaa"/></div></>}
+                    <div><label>Validade</label><CampoData className="inp" value={e.validade || ''} onChange={v => upd(e.key, {validade: v})} /></div></>}
                   {e.tab === 'documentos' && <div><label>Data de atualização</label><input className="inp" value={e.dataAtualizacao || ''} onChange={ev => upd(e.key, {dataAtualizacao: ev.target.value})}/></div>}
                 </div>
               )}
@@ -1158,8 +1156,8 @@ function EmpresaTab() {
               ['Inscrição Estadual', empresa.ie],
               ['Inscrição Municipal', empresa.im],
               ['Porte', empresa.porte],
-              ['Data de Abertura', empresa.dataAbertura],
-              ['Situação Cadastral', [empresa.situacaoCadastral, empresa.dataSituacao && `desde ${empresa.dataSituacao}`].filter(Boolean).join(' ')],
+              ['Data de Abertura', NovariData.mostrar(empresa.dataAbertura) === '—' ? '' : NovariData.mostrar(empresa.dataAbertura)],
+              ['Situação Cadastral', [empresa.situacaoCadastral, empresa.dataSituacao && `desde ${NovariData.mostrar(empresa.dataSituacao)}`].filter(Boolean).join(' ')],
               ['Natureza Jurídica', empresa.naturezaJuridica],
               ['CNAE Principal', empresa.cnae],
               ['Endereço', empresa.endereco],
@@ -1239,11 +1237,11 @@ function EmpresaForm({data, onClose}) {
         </div>
         <div className="row2">
           <div className="f"><label>Porte</label><input className="inp" value={form.porte} onChange={e=>set('porte',e.target.value)}/></div>
-          <div className="f"><label>Data de Abertura</label><input className="inp" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+          <div className="f"><label>Data de Abertura</label><CampoData className="inp" value={form.dataAbertura} onChange={v=>set('dataAbertura',v)} /></div>
         </div>
         <div className="row2">
           <div className="f"><label>Situação Cadastral</label><input className="inp" value={form.situacaoCadastral} onChange={e=>set('situacaoCadastral',e.target.value)}/></div>
-          <div className="f"><label>Data da Situação</label><input className="inp" value={form.dataSituacao} onChange={e=>set('dataSituacao',e.target.value)} placeholder="dd/mm/aaaa"/></div>
+          <div className="f"><label>Data da Situação</label><CampoData className="inp" value={form.dataSituacao} onChange={v=>set('dataSituacao',v)} /></div>
         </div>
         <div className="f"><label>Natureza Jurídica</label><input className="inp" value={form.naturezaJuridica} onChange={e=>set('naturezaJuridica',e.target.value)}/></div>
         <div className="f"><label>Atividades Secundárias (uma por linha)</label><textarea className="inp" rows={5} value={form.atividadesSecundarias} onChange={e=>set('atividadesSecundarias',e.target.value)}/></div>
@@ -1279,8 +1277,8 @@ function CertidoesTab() {
                   return (
                     <tr key={c.id}>
                       <td style={{fontWeight:600}}>{c.nome}</td>
-                      <td>{c.emissao || '—'}</td>
-                      <td>{c.validade || '—'}</td>
+                      <td>{NovariData.mostrar(c.emissao)}</td>
+                      <td>{NovariData.mostrar(c.validade)}</td>
                       <td><span className={`status ${st.cls}`}><span className={`dot ${st.cls}`}></span> {st.txt}</span></td>
                       <td style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
                         {c.pdfId && <a className="pdf-view-btn" href="#" onClick={e=>openPdf(e, c.pdfId)} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
@@ -1329,7 +1327,7 @@ function CertidaoForm({data, onClose}) {
     if (!form.nome.trim()) {setErr('Informe o nome da certidão.'); return;}
     setErr(''); setSaving(true);
     try {
-      const d = {nome:form.nome.trim(), emissao:(form.emissao||'').trim(), validade:(form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
+      const d = {nome:form.nome.trim(), emissao: NovariData.iso(form.emissao) || (form.emissao||'').trim(), validade: NovariData.iso(form.validade) || (form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('certidoes').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('certidoes').add(d); }
       pdf.afterSave(d.pdfId);
@@ -1351,8 +1349,8 @@ function CertidaoForm({data, onClose}) {
         {form.pdfId && <a className="pdf-link" href="#" onClick={e=>openPdf(e, form.pdfId)}><Icon name="file" className="ic" style={{width:13,height:13}}/> {form.pdfNome || 'Ver PDF anexado'}</a>}
         <div className="f"><label>Nome da Certidão *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: CND Federal (PGFN/RFB)"/></div>
         <div className="row2">
-          <div className="f"><label>Emissão (dd/mm/aaaa)</label><input className="inp" value={form.emissao} onChange={e=>set('emissao',e.target.value)} placeholder="15/04/2026"/></div>
-          <div className="f"><label>Validade (dd/mm/aaaa)</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="12/10/2026"/></div>
+          <div className="f"><label>Emissão</label><CampoData className="inp" value={form.emissao} onChange={v=>set('emissao',v)} /></div>
+          <div className="f"><label>Validade</label><CampoData className="inp" value={form.validade} onChange={v=>set('validade',v)} /></div>
         </div>
         <p style={{margin:0,fontSize:12,color:'var(--muted)'}}>Dica: reveja nome e datas antes de salvar — a leitura automática é uma sugestão, não é garantida para todo tipo de certidão.</p>
       </div>
@@ -1488,7 +1486,7 @@ function LicencasTab() {
                     <tr key={l.id}>
                       <td style={{fontWeight:600}}>{l.nome}</td>
                       <td>{l.orgao || '—'}</td>
-                      <td>{l.validade || '—'}</td>
+                      <td>{NovariData.mostrar(l.validade)}</td>
                       <td><span className={`status ${st.cls}`}><span className={`dot ${st.cls}`}></span> {st.txt}</span></td>
                       <td style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
                         {l.pdfId && <a className="pdf-view-btn" href="#" onClick={e=>openPdf(e, l.pdfId)} title="Ver PDF"><Icon name="file" className="ic" style={{width:14,height:14}}/></a>}
@@ -1536,7 +1534,7 @@ function LicencaForm({data, onClose}) {
     if (!form.nome.trim()) {setErr('Informe o nome da licença.'); return;}
     setErr(''); setSaving(true);
     try {
-      const d = {nome:form.nome.trim(), orgao:(form.orgao||'').trim(), validade:(form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
+      const d = {nome:form.nome.trim(), orgao:(form.orgao||'').trim(), validade: NovariData.iso(form.validade) || (form.validade||'').trim(), pdfId:form.pdfId||'', pdfNome:form.pdfNome||''};
       if (isEdit) await db.collection('licencas').doc(data.id).update(d);
       else { d.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('licencas').add(d); }
       pdf.afterSave(d.pdfId);
@@ -1559,7 +1557,7 @@ function LicencaForm({data, onClose}) {
         <div className="f"><label>Nome da Licença / Alvará *</label><input className="inp" value={form.nome} onChange={e=>set('nome',e.target.value)} placeholder="Ex: Alvará de Funcionamento"/></div>
         <div className="row2">
           <div className="f"><label>Órgão</label><input className="inp" value={form.orgao} onChange={e=>set('orgao',e.target.value)} placeholder="Ex: Prefeitura de Manaus"/></div>
-          <div className="f"><label>Validade (dd/mm/aaaa)</label><input className="inp" value={form.validade} onChange={e=>set('validade',e.target.value)} placeholder="31/12/2026"/></div>
+          <div className="f"><label>Validade</label><CampoData className="inp" value={form.validade} onChange={v=>set('validade',v)} /></div>
         </div>
         <p style={{margin:0,fontSize:12,color:'var(--muted)'}}>Dica: reveja órgão e validade antes de salvar — a leitura automática é uma sugestão.</p>
       </div>
