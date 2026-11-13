@@ -704,7 +704,9 @@ function PedidosApp() {
     if (modal !== "add") {
       const antes = orders.find(o => o.id === updated.id) || {};
       if (antes.status !== updated.status && ehEntregue(updated.status, stagesRaw)) {
-        if ((await criarContaReceber(updated)) === true) flash("Pedido entregue. Conta a receber criada no Financeiro.");
+        const r = await criarContaReceber(updated);
+        if (r === true) flash("Pedido entregue. Conta a receber criada no Financeiro.");
+        else if (r === "nf") flash("Pedido entregue. A conta a receber será criada quando a NF for regularizada.");
       }
     }
   }
@@ -765,6 +767,11 @@ function PedidosApp() {
     let novo = pushHistory({ ...o, ...dados }, "Documento fiscal", det);
     if (alvo) novo = pushHistory({ ...novo, status: alvo }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(alvo, stagesRaw));
     await fbSet(novo);
+    // Pedido já entregue que estava "Sem NF" e foi regularizado: agora entra em Contas a Receber.
+    if (o.nfStatus === "sem" && st !== "sem" && ehEntregue(o.status, stagesRaw)) {
+      const r = await criarContaReceber(novo);
+      if (r === true) { flash("NF regularizada. Conta a receber criada no Financeiro."); return; }
+    }
     if (alvo) { flash("Pedido movido para " + stageLabel(alvo, stagesRaw).toLowerCase() + (st === "sem" ? " (sem NF — fica no alerta)." : ".")); return; }
     flash(st === "sem" ? "Registrado: entrega sem NF. Fica no alerta até regularizar." : "Documento fiscal atualizado.");
   }
@@ -777,17 +784,20 @@ function PedidosApp() {
 
   // Ao marcar como Entregue, o pedido entra em Financeiro → Contas a Receber (uma vez só: `contaReceberId` no pedido).
   // Vencimento em branco, para preencher no Financeiro. Se já existir conta ligada ao pedido, não cria outra.
+  // Pedido "Sem NF" (nota sai depois) ainda NÃO gera conta: ela é criada quando a nota for regularizada (informada ou encerrada).
+  // Retorna true (criou), false (não criou), "nf" (aguardando NF) ou null (erro).
   async function criarContaReceber(o) {
     try {
       const pedRef = db.collection(COL).doc(o.id);
       const contaRef = db.collection("contas_receber").doc();
       const quem = ((firebase.auth().currentUser || {}).email) || "";
-      let criada = false;
+      let criada = false, aguardaNf = false;
       await db.runTransaction(async tx => {
         const snap = await tx.get(pedRef);
         if (!snap.exists) return;
         const d = snap.data();
         if (d.contaReceberId) return;
+        if (d.nfStatus === "sem") { aguardaNf = true; return; }
         tx.set(contaRef, {
           cliente: d.cliente || "", tipo: "pedido", vencimento: "", valor: Number(d.valor) || 0,
           status: "pendente", dataRecebimento: "",
@@ -802,7 +812,7 @@ function PedidosApp() {
         });
         criada = true;
       });
-      return criada;
+      return aguardaNf ? "nf" : criada;
     } catch (e) {
       flash("O pedido foi atualizado, mas a conta a receber não foi criada: " + e.message + ". Use \"Gerar de pedidos\" no Financeiro.", "err");
       return null;
@@ -813,6 +823,7 @@ function PedidosApp() {
     if (ehEntregue(to, stagesRaw)) {
       const r = await criarContaReceber(o);
       if (r === true) flash("Pedido entregue. Conta a receber criada no Financeiro.");
+      else if (r === "nf") flash("Pedido entregue. A conta a receber será criada quando a NF for regularizada.");
       else if (r === false) flash("Pedido movido para " + stageLabel(to, stagesRaw).toLowerCase() + ".");
       return;
     }

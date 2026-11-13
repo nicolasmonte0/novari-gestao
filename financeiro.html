@@ -605,7 +605,7 @@ function GerarContaDialog({pedidos, onClose}) {
       <div className="form">
         {pedidos.length === 0 ? <div className="empty">Nenhum pedido faturado ou entregue sem conta a receber.</div> : (
           <>
-            <p style={{margin:0,color:'var(--ink-2)',fontSize:13.5,lineHeight:1.5}}>Marque os pedidos que devem virar conta a receber. O vencimento fica em branco para você preencher depois. Pedidos já entregues antes desta função começam desmarcados: marque só os que ainda não foram lançados.</p>
+            <p style={{margin:0,color:'var(--ink-2)',fontSize:13.5,lineHeight:1.5}}>Marque os pedidos que devem virar conta a receber. O vencimento fica em branco para você preencher depois. Pedidos já entregues antes desta função começam desmarcados: marque só os que ainda não foram lançados. Pedidos "Sem NF" só aparecem depois que a nota for regularizada.</p>
             <div className="gc-list">
               {pedidos.map(p => (
                 <label className="gc-row" key={p.id}>
@@ -636,7 +636,7 @@ function ContasReceberTab() {
   if (loading) return <div className="loading">Carregando…</div>;
 
   const etapas = (stagesDoc && Array.isArray(stagesDoc.list) && stagesDoc.list.length) ? stagesDoc.list : PEDIDOS_ETAPAS_PADRAO;
-  const faturados = pedidosCol.items.filter(p => (grupoDaEtapa(p.status, etapas) === 'faturamento' || etapaEntregue(p.status, etapas)) && !p.contaReceberId).map(p => ({...p, _entregue: etapaEntregue(p.status, etapas)}));
+  const faturados = pedidosCol.items.filter(p => (grupoDaEtapa(p.status, etapas) === 'faturamento' || etapaEntregue(p.status, etapas)) && !p.contaReceberId && p.nfStatus !== 'sem').map(p => ({...p, _entregue: etapaEntregue(p.status, etapas)}));
 
   const itemsComStatus = items.map(c => ({...c, _status: contaStatus(c.vencimento, c.status)}));
   const filtered = filtro === 'todas' ? itemsComStatus :
