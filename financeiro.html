@@ -270,11 +270,11 @@ function contaStatus(vencimento, statusField) {
   if (d < 0) return 'vencido';
   return 'pendente';
 }
-function statusLabel(s) {
+function statusLabel(s, tipo) {
   if (s === 'pago') return 'Pago';
   if (s === 'recebido') return 'Recebido';
-  if (s === 'vencido') return 'Vencida';
-  return 'Pendente';
+  if (s === 'vencido') return 'Vencido';
+  return tipo === 'receber' ? 'A receber' : 'A pagar';
 }
 function statusCls(s) {
   if (s === 'pago' || s === 'recebido') return s;
@@ -423,9 +423,9 @@ function ContasPagarTab() {
           <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Nova Conta</button>
         </div>
         <div className="filter-row">
-          {['todas','pendentes','vencidas','pagas'].map(f => (
+          {[['todas','Todas'],['pendentes','A pagar'],['vencidas','Vencidos'],['pagas','Pagas']].map(([f,l]) => (
             <button key={f} className={`filter-btn${filtro===f?' active':''}`} onClick={() => setFiltro(f)}>
-              {f.charAt(0).toUpperCase()+f.slice(1)}
+              {l}
             </button>
           ))}
         </div>
@@ -444,7 +444,7 @@ function ContasPagarTab() {
                       <td>{c.fornecedor || '—'}</td>
                       <td>{NovariData.mostrar(c.vencimento)}</td>
                       <td style={{fontWeight:600, color: isPago ? 'var(--muted)' : 'var(--alert)', textDecoration: isPago ? 'line-through' : 'none'}}>{fmtBRL(c.valor)}</td>
-                      <td><span className={`status ${statusCls(st)}`}><span className={`dot ${statusCls(st)}`}></span> {statusLabel(st)}</span></td>
+                      <td><span className={`status ${statusCls(st)}`}><span className={`dot ${statusCls(st)}`}></span> {statusLabel(st, 'pagar')}</span></td>
                       <td><button className="btn sm" onClick={() => {setEditItem(c); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button></td>
                     </tr>
                   );
@@ -517,7 +517,7 @@ function ContaPagarForm({data, onClose}) {
           <div className="f">
             <label>Status</label>
             <select className="inp" value={form.status} onChange={e=>set('status',e.target.value)}>
-              <option value="pendente">Pendente</option>
+              <option value="pendente">A pagar</option>
               <option value="pago">Pago</option>
             </select>
           </div>
@@ -662,7 +662,7 @@ function ContasReceberTab() {
           </div>
         </div>
         <div className="filter-row">
-          {[['todas','Todas'],['pendentes','Pendentes'],['vencidas','Vencidas'],['recebidas','Recebidas']].map(([k,l]) => (
+          {[['todas','Todas'],['pendentes','A receber'],['vencidas','Vencidos'],['recebidas','Recebidas']].map(([k,l]) => (
             <button key={k} className={`filter-btn${filtro===k?' active':''}`} onClick={() => setFiltro(k)}>{l}</button>
           ))}
         </div>
@@ -680,7 +680,7 @@ function ContasReceberTab() {
                       <td><span className={`tipo ${c.tipo||'pedido'}`}>{c.tipo === 'servico' ? 'Serviço' : 'Pedido'}</span></td>
                       <td>{NovariData.mostrar(c.vencimento)}</td>
                       <td style={{fontWeight:600, color: isRecebido ? 'var(--muted)' : 'var(--ok)', textDecoration: isRecebido ? 'line-through' : 'none'}}>{fmtBRL(c.valor)}</td>
-                      <td><span className={`status ${statusCls(st)}`}><span className={`dot ${statusCls(st)}`}></span> {statusLabel(st)}</span></td>
+                      <td><span className={`status ${statusCls(st)}`}><span className={`dot ${statusCls(st)}`}></span> {statusLabel(st, 'receber')}</span></td>
                       <td><button className="btn sm" onClick={() => {setEditItem(c); setShowForm(true);}}><Icon name="edit" style={{width:13,height:13}}/></button></td>
                     </tr>
                   );
@@ -750,7 +750,7 @@ function ContaReceberForm({data, onClose}) {
           <div className="f">
             <label>Status</label>
             <select className="inp" value={form.status} onChange={e=>set('status',e.target.value)}>
-              <option value="pendente">Pendente</option>
+              <option value="pendente">A receber</option>
               <option value="recebido">Recebido</option>
             </select>
           </div>
@@ -1031,13 +1031,13 @@ function App() {
             <div className="stripe" style={{background:'var(--alert)'}}></div>
             <div className="label"><Icon name="arrow-down" style={{width:14,height:14}}/> A Pagar (mês)</div>
             <div className="value" style={{color:'var(--alert)'}}>{fmtBRL(totalPagarMes)}</div>
-            <div className="sub">{pagarMes.length} conta{pagarMes.length !== 1 ? 's' : ''} pendente{pagarMes.length !== 1 ? 's' : ''}</div>
+            <div className="sub">{pagarMes.length} conta{pagarMes.length !== 1 ? 's' : ''} a pagar</div>
           </div>
           <div className="summary-card">
             <div className="stripe" style={{background:'var(--ok)'}}></div>
             <div className="label"><Icon name="arrow-up" style={{width:14,height:14}}/> A Receber (mês)</div>
             <div className="value" style={{color:'var(--ok)'}}>{fmtBRL(totalReceberMes)}</div>
-            <div className="sub">{receberMes.length} fatura{receberMes.length !== 1 ? 's' : ''} pendente{receberMes.length !== 1 ? 's' : ''}</div>
+            <div className="sub">{receberMes.length} fatura{receberMes.length !== 1 ? 's' : ''} a receber</div>
           </div>
           <div className="summary-card">
             <div className="stripe" style={{background: vencidos.length > 0 ? 'var(--warn)' : 'var(--ok)'}}></div>
