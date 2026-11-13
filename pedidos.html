@@ -456,13 +456,12 @@ function margem(o) { const v = Number(o.valor) || 0; return v > 0 ? (lucro(o) / 
 const NF_LIMITE = 7; // dias; depois disso a etiqueta "Sem NF" fica vermelha
 const NF_COLS = [
   { key:"definir", titulo:"Definir nota", icon:"file",    cor:"#8B94AD" },
-  { key:"com",     titulo:"NF a emitir",  icon:"receipt", cor:"#2E6BE6" },
-  { key:"emitida", titulo:"NF emitida",   icon:"check",   cor:"#17A05D" },
+  { key:"com",     titulo:"Com NF",       icon:"receipt", cor:"#17A05D" },
   { key:"sem",     titulo:"Sem NF",       icon:"alert",   cor:"#E3A21A" },
 ];
 const NF_MOTIVOS = ["Cliente retira hoje", "Entrega urgente", "Cliente não exige nota", "Nota será emitida depois", "Outro motivo"];
 const NF_OPCOES = {
-  com:       "Com NF · a emitir",
+  com:       "Com NF · nº pendente",
   emitida:   "NF emitida",
   sem:       "Sem NF · nota sai depois",
   encerrado: "Sem NF · não será emitida",
@@ -470,7 +469,7 @@ const NF_OPCOES = {
 function nfGrupo(o) {
   const s = o.nfStatus;
   if (s === "com") return "com";
-  if (s === "emitida") return "emitida";
+  if (s === "emitida") return "com";
   if (s === "sem" || s === "encerrado") return "sem";
   return "definir";
 }
@@ -493,7 +492,7 @@ function nfAtrasado(o) { const d = nfDias(o); return d !== null && d > NF_LIMITE
 function nfTag(o, mostrarDefinir) {
   const s = o.nfStatus;
   if (s === "emitida") return { cls: "ok", t: o.nfNumero ? "NF " + o.nfNumero : "NF emitida" };
-  if (s === "com") return { cls: "emit", t: "Com NF · a emitir" };
+  if (s === "com") return { cls: "emit", t: "Com NF · nº pendente" };
   if (s === "sem") {
     const d = nfDias(o);
     const t = d === null || d === 0 ? "Sem NF" : "Sem NF há " + d + (d === 1 ? " dia" : " dias");
@@ -705,17 +704,24 @@ function PedidosApp() {
   }
   /* ----- Documento fiscal ----- */
   function nfAbrir(o, modo, avancar) { setDetailId(null); setModal(null); setShowNfList(false); setNfDlg({ id: o.id, modo: modo || "todas", avancar: avancar || null }); }
+  // Etapa seguinte quando o pedido está no Faturamento e a próxima etapa já é fora dele (ex.: Em entrega).
+  function proximaFora(o) {
+    const st = stagesFlow.find(x => x.id === o.status);
+    if (!st || !st.next) return null;
+    return groupOfStage(o.status, stagesRaw) === "faturamento" && groupOfStage(st.next, stagesRaw) !== "faturamento" ? st : null;
+  }
   // Saindo do Faturamento sem ter definido a nota: pergunta antes, para não esquecer.
   function avancarPedido(o, s) {
     if (!s.next) return;
-    if (!o.nfStatus && groupOfStage(o.status, stagesRaw) === "faturamento" && groupOfStage(s.next, stagesRaw) !== "faturamento") return nfAbrir(o, "avancar", s.next);
+    if (!o.nfStatus && proximaFora(o)) return nfAbrir(o, "avancar", s.next);
     moveTo(o, s.next);
   }
   async function nfGravar(o, d) {
     const hoje = NovariData.hoje();
-    const st = d.status;
+    let st = d.status;
+    if (st === "com" && d.numero) st = "emitida";
     const dados = { nfStatus: st };
-    let det = NF_OPCOES[st] || st;
+    let det = st === "com" ? "Com NF (número a informar)" : (NF_OPCOES[st] || st);
     if (st === "emitida") {
       dados.nfNumero = d.numero; dados.nfData = d.data || hoje; dados.nfLink = d.link || "";
       if (o.nfStatus === "sem") dados.nfRegularizadoEm = hoje;
@@ -727,22 +733,18 @@ function PedidosApp() {
       if (st === "encerrado" && o.nfStatus === "sem") dados.nfRegularizadoEm = hoje;
       det = NF_OPCOES[st] + " · autorizado por " + d.por + " · " + d.motivo;
     }
-    const avancar = nfDlg && nfDlg.avancar;
+    const alvo = d.enviar ? ((nfDlg && nfDlg.avancar) || (proximaFora(o) || {}).next || null) : null;
     setNfDlg(null);
     let novo = pushHistory({ ...o, ...dados }, "Documento fiscal", det);
-    if (avancar) novo = pushHistory({ ...novo, status: avancar }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(avancar, stagesRaw));
+    if (alvo) novo = pushHistory({ ...novo, status: alvo }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(alvo, stagesRaw));
     await fbSet(novo);
-    if (avancar) { flash("Pedido movido para " + stageLabel(avancar, stagesRaw).toLowerCase() + (st === "sem" ? " (sem NF — fica no alerta)." : ".")); return; }
+    if (alvo) { flash("Pedido movido para " + stageLabel(alvo, stagesRaw).toLowerCase() + (st === "sem" ? " (sem NF — fica no alerta)." : ".")); return; }
     flash(st === "sem" ? "Registrado: entrega sem NF. Fica no alerta até regularizar." : "Documento fiscal atualizado.");
   }
-  async function nfComRapido(o) {
-    await fbSet(pushHistory({ ...o, nfStatus: "com" }, "Documento fiscal", NF_OPCOES.com));
-    flash("Marcado como Com NF (a emitir).");
-  }
   const nfAcoes = o => ({
-    com: () => nfComRapido(o),
+    com: () => nfAbrir(o, "com"),
     sem: () => nfAbrir(o, "sem"),
-    informar: () => nfAbrir(o, "informar"),
+    informar: () => nfAbrir(o, "com"),
     regularizar: () => nfAbrir(o, "regularizar"),
   });
 
@@ -1062,7 +1064,7 @@ function PedidosApp() {
 
           {view === "faturamento" && fatModo === "nf" ? (
           <div className="board">
-            {NF_COLS.filter(c => fNf === "todos" || (fNf === "com" ? (c.key === "com" || c.key === "emitida") : fNf === c.key)).map(c => {
+            {NF_COLS.filter(c => fNf === "todos" || fNf === c.key).map(c => {
               let list = visible.filter(o => viewStages.some(s => s.id === o.status) && nfGrupo(o) === c.key && (fStage === "todos" || fStage === o.status));
               list = c.key === "sem"
                 ? list.sort((a, b) => (nfDias(b) === null ? -1 : nfDias(b)) - (nfDias(a) === null ? -1 : nfDias(a)))
@@ -1113,7 +1115,7 @@ function PedidosApp() {
       )}
 
       {showNfList && <Overlay onClose={() => setShowNfList(false)}><NfPendentes lista={nfPend} onClose={() => setShowNfList(false)} onRegularizar={o => nfAbrir(o, "regularizar")} onAbrir={o => { setShowNfList(false); openDetail(o); }} /></Overlay>}
-      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
+      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} enviarTxt={(() => { const e = proximaFora(nfDlgOrder); if (!e) return null; const t = e.actText || "avançar"; return "Salvar e " + t.charAt(0).toLowerCase() + t.slice(1); })()} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
       {showSum && <Overlay onClose={() => setShowSum(false)}><DailySummary orders={orders} onClose={() => setShowSum(false)} /></Overlay>}
       {showRecover && <Overlay onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
       {showStages && <Overlay onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
@@ -1304,9 +1306,10 @@ function DetailPanel({ o, onClose, onEdit, onDelete, onNf }) {
 }
 
 /* ---------- Resumo do dia ---------- */
-function NfDialog({ o, modo, onClose, onSave }) {
-  const permitidas = modo === "avancar" ? ["com", "emitida", "sem", "encerrado"] : modo === "sem" ? ["sem"] : modo === "informar" ? ["emitida"] : modo === "regularizar" ? ["emitida", "encerrado"] : ["com", "emitida", "sem", "encerrado"];
-  const inicial = modo === "todas" ? (o.nfStatus || "com") : permitidas[0];
+const NF_OPC_DLG = { com: "Com NF", sem: "Sem NF · nota sai depois", encerrado: "Sem NF · não será emitida" };
+function NfDialog({ o, modo, enviarTxt, onClose, onSave }) {
+  const permitidas = modo === "com" ? ["com"] : modo === "sem" ? ["sem"] : modo === "regularizar" ? ["com", "encerrado"] : ["com", "sem", "encerrado"];
+  const inicial = modo === "todas" ? (o.nfStatus === "emitida" ? "com" : (o.nfStatus || "com")) : permitidas[0];
   const lembrado = (() => { try { return localStorage.getItem("novari-nf-por") || ""; } catch (e) { return ""; } })();
   const motivoIni = NF_MOTIVOS.includes(o.nfMotivo) ? o.nfMotivo : (o.nfMotivo ? "Outro motivo" : "");
   const [st, setSt] = useState(inicial);
@@ -1318,19 +1321,20 @@ function NfDialog({ o, modo, onClose, onSave }) {
   const [outro, setOutro] = useState(motivoIni === "Outro motivo" ? (o.nfMotivo || "") : "");
   const [obs, setObs] = useState(o.nfObs || "");
   const [erro, setErro] = useState("");
-  const titulo = modo === "avancar" ? "Como segue a nota fiscal?" : modo === "sem" ? "Entregar sem nota fiscal" : modo === "informar" ? "Informar nota fiscal" : modo === "regularizar" ? "Regularizar nota fiscal" : "Documento fiscal";
+  const titulo = modo === "avancar" ? "Como segue a nota fiscal?" : modo === "com" ? "Nota fiscal do pedido" : modo === "sem" ? "Entregar sem nota fiscal" : modo === "regularizar" ? "Regularizar nota fiscal" : "Documento fiscal";
   const semOuEnc = st === "sem" || st === "encerrado";
-  function salvar() {
-    if (st === "emitida" && !numero.trim()) return setErro("Informe o número da nota fiscal.");
+  function salvar(enviar) {
+    if (st === "com" && modo === "regularizar" && !numero.trim()) return setErro("Informe o número da nota fiscal.");
     if (semOuEnc) {
       if (!por.trim()) return setErro("Informe quem autorizou.");
       if (!motivo) return setErro("Escolha o motivo.");
       if (motivo === "Outro motivo" && !outro.trim()) return setErro("Descreva o motivo.");
       try { localStorage.setItem("novari-nf-por", por.trim()); } catch (e) {}
     }
-    onSave({ status: st, numero: numero.trim(), data, link: link.trim(), por: por.trim(),
+    onSave({ status: st, numero: numero.trim(), data, link: link.trim(), por: por.trim(), enviar: !!enviar,
       motivo: motivo === "Outro motivo" ? outro.trim() : motivo, obs: obs.trim() });
   }
+  const soEnviar = modo === "avancar" && enviarTxt;
   return (
     <div className="dlg" role="dialog" aria-modal="true" aria-label={titulo}>
       <div className="dlg-h">
@@ -1340,19 +1344,19 @@ function NfDialog({ o, modo, onClose, onSave }) {
       </div>
       <div className="dlg-b">
         {modo === "avancar" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>Antes de sair do Faturamento, informe a situação da nota. O pedido é movido para a próxima etapa ao salvar.</p>}
-        {modo === "sem" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>O pedido segue para a entrega e fica no alerta <b>Sem NF</b> até você informar a nota. Fica registrado quem autorizou e o motivo.</p>}
+        {modo === "sem" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>Fica no alerta <b>Sem NF</b> até você informar a nota. Registra quem autorizou e o motivo.</p>}
         {modo === "regularizar" && o.nfStatus === "sem" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>Este pedido foi entregue sem NF{nfDias(o) ? " há " + nfDias(o) + " dias" : ""}. Informe a nota emitida ou encerre o alerta se ela não será emitida.</p>}
         {permitidas.length > 1 && (
           <div className="nf-opts" role="radiogroup" aria-label="Situação da nota">
-            {permitidas.map(k => <button key={k} type="button" className="chip" aria-pressed={st === k} onClick={() => { setSt(k); setErro(""); }}>{NF_OPCOES[k]}</button>)}
+            {permitidas.map(k => <button key={k} type="button" className="chip" aria-pressed={st === k} onClick={() => { setSt(k); setErro(""); }}>{modo === "regularizar" && k === "com" ? "Informar a NF emitida" : NF_OPC_DLG[k]}</button>)}
           </div>
         )}
-        {st === "com" && <p style={{ margin: 0, color: "var(--ink-2)" }}>Marca o pedido como <b>Com NF</b>. Depois você informa o número quando a nota for emitida.</p>}
-        {st === "emitida" && (
+        {st === "com" && (
           <div className="row2">
-            <Field label="Número da NF *"><input className="inp" value={numero} onChange={e => setNumero(e.target.value)} autoFocus placeholder="Ex.: 1234" /></Field>
-            <Field label="Data de emissão"><CampoData className="inp" value={data} onChange={setData} /></Field>
-            <div className="f" style={{ gridColumn: "1 / -1" }}><label>Link do PDF/XML (opcional)</label><input className="inp" value={link} onChange={e => setLink(e.target.value)} placeholder="https://…" /></div>
+            <Field label={"Número da NF" + (modo === "regularizar" ? " *" : "")}><input className="inp" value={numero} onChange={e => setNumero(e.target.value)} autoFocus placeholder="Ex.: 1234" /></Field>
+            {numero.trim() && <Field label="Data de emissão"><CampoData className="inp" value={data} onChange={setData} /></Field>}
+            {numero.trim() && <div className="f" style={{ gridColumn: "1 / -1" }}><label>Link do PDF/XML (opcional)</label><input className="inp" value={link} onChange={e => setLink(e.target.value)} placeholder="https://…" /></div>}
+            {!numero.trim() && modo !== "regularizar" && <p style={{ margin: "26px 0 0", color: "var(--muted)", fontSize: 12.5, lineHeight: 1.35 }}>Se a nota ainda não foi emitida, deixe em branco: fica como "nº pendente" e você informa depois.</p>}
           </div>
         )}
         {semOuEnc && (
@@ -1372,7 +1376,9 @@ function NfDialog({ o, modo, onClose, onSave }) {
       </div>
       <div className="dlg-f">
         <button className="btn" onClick={onClose}>Cancelar</button>
-        <button className="btn primary" onClick={salvar}>{st === "sem" ? "Confirmar entrega sem NF" : modo === "avancar" ? "Salvar e avançar" : st === "emitida" ? "Salvar nota" : "Salvar"}</button>
+        <span className="grow"></span>
+        {!soEnviar && <button className={"btn" + (enviarTxt ? "" : " primary")} onClick={() => salvar(false)}>Salvar</button>}
+        {enviarTxt && <button className="btn primary" onClick={() => salvar(true)}>{enviarTxt}</button>}
       </div>
     </div>
   );
