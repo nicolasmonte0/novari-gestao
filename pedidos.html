@@ -704,26 +704,32 @@ function PedidosApp() {
   }
   /* ----- Documento fiscal ----- */
   function nfAbrir(o, modo, avancar) { setDetailId(null); setModal(null); setShowNfList(false); setNfDlg({ id: o.id, modo: modo || "todas", avancar: avancar || null }); }
-  // Para quem está no Faturamento: etapa de destino ao "enviar para entrega" = primeira etapa da Logística
-  // depois da atual (normalmente "Em entrega"). Só vale quando a etapa seguinte já é fora do Faturamento.
-  function destinoEntrega(o) {
+  // Saída do Faturamento (só quando a etapa seguinte já é fora do Faturamento):
+  //  - com NF (número informado)  -> primeira etapa da Logística depois da atual que não seja "sem NF" (normalmente "Em entrega");
+  //  - sem NF                     -> etapa seguinte configurada em ⚙️ → Etapas, com o texto de ação que você já usa ("Encaminhado p/ Entrega (Sem NF)").
+  function saidaFaturamento(o) {
     if (groupOfStage(o.status, stagesRaw) !== "faturamento") return null;
     const i = stagesRaw.findIndex(x => x.id === o.status);
     if (i < 0) return null;
     const prox = stagesRaw[i + 1];
     if (!prox || groupOfStage(prox.id, stagesRaw) === "faturamento") return null; // ainda há outra etapa de Faturamento
-    const log = stagesRaw.slice(i + 1).find(x => groupOfStage(x.id, stagesRaw) === "logistica");
-    return log ? log.id : prox.id;
+    const ehSem = x => /sem\s*nf/i.test(x.label || "");
+    const com = stagesRaw.slice(i + 1).find(x => groupOfStage(x.id, stagesRaw) === "logistica" && !ehSem(x)) || prox;
+    return { com: com.id, sem: prox.id, semTxt: stagesRaw[i].actLabel || "" };
   }
-  // Cartão do pedido no Faturamento: o botão de avançar sempre diz "Enviar para entrega"
-  // (o texto salvo em ⚙️ → Etapas pode estar desatualizado, ex.: "(Sem NF)").
-  function stageDoCard(o, st) { return destinoEntrega(o) ? { ...st, next: destinoEntrega(o), actText: "Enviar para entrega" } : st; }
-  // Saindo do Faturamento sem ter definido a nota: pergunta antes, para não esquecer.
+  // Cartão no Faturamento: com NF emitida diz "Enviar para entrega"; sem NF mantém o texto da etapa.
+  function stageDoCard(o, st) {
+    const sa = saidaFaturamento(o);
+    if (!sa) return st;
+    return (o.nfStatus === "sem" || o.nfStatus === "encerrado") ? { ...st, next: sa.sem } : { ...st, next: sa.com, actText: "Enviar para entrega" };
+  }
+  // Saindo do Faturamento: com NF só com o número; sem definição pergunta antes, para não esquecer.
   function avancarPedido(o, s) {
-    const alvo = destinoEntrega(o);
-    if (alvo) { if (!o.nfStatus) return nfAbrir(o, "avancar", alvo); return moveTo(o, alvo); }
-    if (!s.next) return;
-    moveTo(o, s.next);
+    const sa = saidaFaturamento(o);
+    if (!sa) { if (s.next) moveTo(o, s.next); return; }
+    if (o.nfStatus === "emitida") return moveTo(o, sa.com);
+    if (o.nfStatus === "sem" || o.nfStatus === "encerrado") return moveTo(o, sa.sem);
+    return nfAbrir(o, o.nfStatus === "com" ? "com" : "avancar");
   }
   async function nfGravar(o, d) {
     const hoje = NovariData.hoje();
@@ -742,7 +748,8 @@ function PedidosApp() {
       if (st === "encerrado" && o.nfStatus === "sem") dados.nfRegularizadoEm = hoje;
       det = NF_OPCOES[st] + " · autorizado por " + d.por + " · " + d.motivo;
     }
-    const alvo = d.enviar ? ((nfDlg && nfDlg.avancar) || destinoEntrega(o)) : null;
+    const sa = saidaFaturamento(o);
+    const alvo = d.enviar && sa ? (st === "emitida" ? sa.com : (st === "sem" || st === "encerrado") ? sa.sem : null) : null;
     setNfDlg(null);
     let novo = pushHistory({ ...o, ...dados }, "Documento fiscal", det);
     if (alvo) novo = pushHistory({ ...novo, status: alvo }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(alvo, stagesRaw));
@@ -1124,7 +1131,7 @@ function PedidosApp() {
       )}
 
       {showNfList && <Overlay onClose={() => setShowNfList(false)}><NfPendentes lista={nfPend} onClose={() => setShowNfList(false)} onRegularizar={o => nfAbrir(o, "regularizar")} onAbrir={o => { setShowNfList(false); openDetail(o); }} /></Overlay>}
-      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} enviarTxt={destinoEntrega(nfDlgOrder) ? "Salvar e enviar para entrega" : null} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
+      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} saida={saidaFaturamento(nfDlgOrder)} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
       {showSum && <Overlay onClose={() => setShowSum(false)}><DailySummary orders={orders} onClose={() => setShowSum(false)} /></Overlay>}
       {showRecover && <Overlay onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
       {showStages && <Overlay onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
@@ -1316,7 +1323,7 @@ function DetailPanel({ o, onClose, onEdit, onDelete, onNf }) {
 
 /* ---------- Resumo do dia ---------- */
 const NF_OPC_DLG = { com: "Com NF", sem: "Sem NF · nota sai depois", encerrado: "Sem NF · não será emitida" };
-function NfDialog({ o, modo, enviarTxt, onClose, onSave }) {
+function NfDialog({ o, modo, saida, onClose, onSave }) {
   const permitidas = modo === "com" ? ["com"] : modo === "sem" ? ["sem"] : modo === "regularizar" ? ["com", "encerrado"] : ["com", "sem", "encerrado"];
   const inicial = modo === "todas" ? (o.nfStatus === "emitida" ? "com" : (o.nfStatus || "com")) : permitidas[0];
   const lembrado = (() => { try { return localStorage.getItem("novari-nf-por") || ""; } catch (e) { return ""; } })();
@@ -1343,7 +1350,10 @@ function NfDialog({ o, modo, enviarTxt, onClose, onSave }) {
     onSave({ status: st, numero: numero.trim(), data, link: link.trim(), por: por.trim(), enviar: !!enviar,
       motivo: motivo === "Outro motivo" ? outro.trim() : motivo, obs: obs.trim() });
   }
-  const soEnviar = modo === "avancar" && enviarTxt;
+  const soEnviar = modo === "avancar" && !!saida;
+  const semNum = st === "com" && !numero.trim();
+  const lower = t => t.charAt(0).toLowerCase() + t.slice(1);
+  const txtSem = "Salvar e " + (saida && saida.semTxt ? lower(saida.semTxt) : "enviar para entrega (sem NF)");
   return (
     <div className="dlg" role="dialog" aria-modal="true" aria-label={titulo}>
       <div className="dlg-h">
@@ -1365,7 +1375,7 @@ function NfDialog({ o, modo, enviarTxt, onClose, onSave }) {
             <Field label={"Número da NF" + (modo === "regularizar" ? " *" : "")}><input className="inp" value={numero} onChange={e => setNumero(e.target.value)} autoFocus placeholder="Ex.: 1234" /></Field>
             {numero.trim() && <Field label="Data de emissão"><CampoData className="inp" value={data} onChange={setData} /></Field>}
             {numero.trim() && <div className="f" style={{ gridColumn: "1 / -1" }}><label>Link do PDF/XML (opcional)</label><input className="inp" value={link} onChange={e => setLink(e.target.value)} placeholder="https://…" /></div>}
-            {!numero.trim() && modo !== "regularizar" && <p style={{ margin: "26px 0 0", color: "var(--muted)", fontSize: 12.5, lineHeight: 1.35 }}>Se a nota ainda não foi emitida, deixe em branco: fica como "nº pendente" e você informa depois.</p>}
+            {!numero.trim() && modo !== "regularizar" && <p style={{ margin: "26px 0 0", color: "var(--muted)", fontSize: 12.5, lineHeight: 1.35 }}>Sem o número, o pedido fica como "nº pendente" no Faturamento. O envio para a entrega só é liberado com o número da NF.</p>}
           </div>
         )}
         {semOuEnc && (
@@ -1386,8 +1396,8 @@ function NfDialog({ o, modo, enviarTxt, onClose, onSave }) {
       <div className="dlg-f">
         <button className="btn" onClick={onClose}>Cancelar</button>
         <span className="grow"></span>
-        {!soEnviar && <button className={"btn" + (enviarTxt ? "" : " primary")} onClick={() => salvar(false)}>Salvar</button>}
-        {enviarTxt && <button className="btn primary" onClick={() => salvar(true)}>{semOuEnc ? enviarTxt + " (sem NF)" : enviarTxt}</button>}
+        {!soEnviar && <button className={"btn" + (saida ? "" : " primary")} onClick={() => salvar(false)}>Salvar</button>}
+        {saida && <button className="btn primary" disabled={semNum} title={semNum ? "Informe o número da NF para enviar para a entrega" : ""} style={semNum ? { opacity: .45, cursor: "not-allowed" } : null} onClick={() => !semNum && salvar(true)}>{semOuEnc ? txtSem : "Salvar e enviar para entrega"}</button>}
       </div>
     </div>
   );
