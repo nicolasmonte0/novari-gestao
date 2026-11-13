@@ -704,16 +704,25 @@ function PedidosApp() {
   }
   /* ----- Documento fiscal ----- */
   function nfAbrir(o, modo, avancar) { setDetailId(null); setModal(null); setShowNfList(false); setNfDlg({ id: o.id, modo: modo || "todas", avancar: avancar || null }); }
-  // Etapa seguinte quando o pedido está no Faturamento e a próxima etapa já é fora dele (ex.: Em entrega).
-  function proximaFora(o) {
-    const st = stagesFlow.find(x => x.id === o.status);
-    if (!st || !st.next) return null;
-    return groupOfStage(o.status, stagesRaw) === "faturamento" && groupOfStage(st.next, stagesRaw) !== "faturamento" ? st : null;
+  // Para quem está no Faturamento: etapa de destino ao "enviar para entrega" = primeira etapa da Logística
+  // depois da atual (normalmente "Em entrega"). Só vale quando a etapa seguinte já é fora do Faturamento.
+  function destinoEntrega(o) {
+    if (groupOfStage(o.status, stagesRaw) !== "faturamento") return null;
+    const i = stagesRaw.findIndex(x => x.id === o.status);
+    if (i < 0) return null;
+    const prox = stagesRaw[i + 1];
+    if (!prox || groupOfStage(prox.id, stagesRaw) === "faturamento") return null; // ainda há outra etapa de Faturamento
+    const log = stagesRaw.slice(i + 1).find(x => groupOfStage(x.id, stagesRaw) === "logistica");
+    return log ? log.id : prox.id;
   }
+  // Cartão do pedido no Faturamento: o botão de avançar sempre diz "Enviar para entrega"
+  // (o texto salvo em ⚙️ → Etapas pode estar desatualizado, ex.: "(Sem NF)").
+  function stageDoCard(o, st) { return destinoEntrega(o) ? { ...st, next: destinoEntrega(o), actText: "Enviar para entrega" } : st; }
   // Saindo do Faturamento sem ter definido a nota: pergunta antes, para não esquecer.
   function avancarPedido(o, s) {
+    const alvo = destinoEntrega(o);
+    if (alvo) { if (!o.nfStatus) return nfAbrir(o, "avancar", alvo); return moveTo(o, alvo); }
     if (!s.next) return;
-    if (!o.nfStatus && proximaFora(o)) return nfAbrir(o, "avancar", s.next);
     moveTo(o, s.next);
   }
   async function nfGravar(o, d) {
@@ -733,7 +742,7 @@ function PedidosApp() {
       if (st === "encerrado" && o.nfStatus === "sem") dados.nfRegularizadoEm = hoje;
       det = NF_OPCOES[st] + " · autorizado por " + d.por + " · " + d.motivo;
     }
-    const alvo = d.enviar ? ((nfDlg && nfDlg.avancar) || (proximaFora(o) || {}).next || null) : null;
+    const alvo = d.enviar ? ((nfDlg && nfDlg.avancar) || destinoEntrega(o)) : null;
     setNfDlg(null);
     let novo = pushHistory({ ...o, ...dados }, "Documento fiscal", det);
     if (alvo) novo = pushHistory({ ...novo, status: alvo }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(alvo, stagesRaw));
@@ -1080,9 +1089,9 @@ function PedidosApp() {
                   <Paginado itens={list} por={40}>{o => {
                     const st = stagesFlow.find(x => x.id === o.status) || { id: o.status, label: o.status };
                     return (
-                      <OrderCard key={o.id} o={o} stage={st} nfAct={nfAcoes(o)}
+                      <OrderCard key={o.id} o={o} stage={stageDoCard(o, st)} nfAct={nfAcoes(o)}
                         onOpen={() => openDetail(o)} onEdit={() => openEdit(o)} onDel={() => setConfirmDel(o.id)}
-                        onNext={() => avancarPedido(o, st)} onPrev={() => st.prev && moveTo(o, st.prev)} />
+                        onNext={() => avancarPedido(o, stageDoCard(o, st))} onPrev={() => st.prev && moveTo(o, st.prev)} />
                     );
                   }}</Paginado>
                 </section>
@@ -1102,9 +1111,9 @@ function PedidosApp() {
                   </div>
                   {list.length === 0 && <p className="empty">Nenhum pedido nesta etapa.</p>}
                   <Paginado itens={list} por={40}>{o => (
-                    <OrderCard key={o.id} o={o} stage={s} nfAct={(view === "faturamento" || view === "logistica") ? nfAcoes(o) : null}
+                    <OrderCard key={o.id} o={o} stage={stageDoCard(o, s)} nfAct={(view === "faturamento" || view === "logistica") ? nfAcoes(o) : null}
                       onOpen={() => openDetail(o)} onEdit={() => openEdit(o)} onDel={() => setConfirmDel(o.id)}
-                      onNext={() => avancarPedido(o, s)} onPrev={() => s.prev && moveTo(o, s.prev)} />
+                      onNext={() => avancarPedido(o, stageDoCard(o, s))} onPrev={() => s.prev && moveTo(o, s.prev)} />
                   )}</Paginado>
                 </section>
               );
@@ -1115,7 +1124,7 @@ function PedidosApp() {
       )}
 
       {showNfList && <Overlay onClose={() => setShowNfList(false)}><NfPendentes lista={nfPend} onClose={() => setShowNfList(false)} onRegularizar={o => nfAbrir(o, "regularizar")} onAbrir={o => { setShowNfList(false); openDetail(o); }} /></Overlay>}
-      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} enviarTxt={(() => { const e = proximaFora(nfDlgOrder); if (!e) return null; const t = e.actText || "avançar"; return "Salvar e " + t.charAt(0).toLowerCase() + t.slice(1); })()} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
+      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} enviarTxt={destinoEntrega(nfDlgOrder) ? "Salvar e enviar para entrega" : null} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
       {showSum && <Overlay onClose={() => setShowSum(false)}><DailySummary orders={orders} onClose={() => setShowSum(false)} /></Overlay>}
       {showRecover && <Overlay onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
       {showStages && <Overlay onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
