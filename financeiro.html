@@ -765,6 +765,21 @@ function ContaReceberForm({data, onClose}) {
 /* ── NOTAS DE ENTRADA / NOTAS DE SAÍDA ──── */
 function isValidUrl(v) { return /^https?:\/\/\S+$/i.test((v||'').trim()); }
 
+/* Aviso somente leitura: pedidos entregues sem NF que ainda precisam de nota de saída. Não grava nada. */
+function AvisoSemNf() {
+  const {items} = useCollection('pedidos');
+  const pend = items.filter(p => p.nfStatus === 'sem');
+  if (!pend.length) return null;
+  const total = pend.reduce((s,p) => s + Number(p.valor||0), 0);
+  return (
+    <div role="alert" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',margin:'0 0 14px',padding:'10px 14px',borderRadius:10,background:'var(--warn-bg)',color:'var(--warn)',fontSize:13.5,fontWeight:500}}>
+      <Icon name="alert"/>
+      <span><b>{pend.length} {pend.length === 1 ? 'pedido entregue sem NF aguarda' : 'pedidos entregues sem NF aguardam'} lançamento de nota de saída</b> · {total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
+      <a href="pedidos.html" style={{marginLeft:'auto',color:'inherit',fontWeight:600}}>Ver em Pedidos</a>
+    </div>
+  );
+}
+
 function NotasFiscaisTab({tipo}) {
   const collection = tipo === 'entrada' ? 'notas_entrada' : 'notas_saida';
   const {items, loading} = useCollection(collection);
@@ -785,6 +800,7 @@ function NotasFiscaisTab({tipo}) {
 
   return (
     <>
+      {tipo === 'saida' && <AvisoSemNf />}
       <div className="card">
         <div className="card-h">
           <h2><Icon name={icone}/> {titulo}</h2>
