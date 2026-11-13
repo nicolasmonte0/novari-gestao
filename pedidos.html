@@ -510,6 +510,11 @@ function nfTexto(o) {
   if (!t) return "";
   return o.nfStatus === "sem" && nfDias(o) !== null ? "Sem NF (" + nfDias(o) + (nfDias(o) === 1 ? " dia" : " dias") + ")" : t.t;
 }
+/* Etapa final de entrega ("Entregue"). Não confunde com "Encaminhado p/ Entrega (Sem NF)". */
+function ehEntregue(id, allStages) {
+  const s = (allStages || []).find(x => x.id === id);
+  return id === "entregue" || /^entregue\b/i.test((s && s.label) || "");
+}
 function byPrazo(a, b) {
   if (!a.prazo && !b.prazo) return 0;
   if (!a.prazo) return 1;
@@ -696,6 +701,12 @@ function PedidosApp() {
     }
     setModal(null);
     await fbSet(updated);
+    if (modal !== "add") {
+      const antes = orders.find(o => o.id === updated.id) || {};
+      if (antes.status !== updated.status && ehEntregue(updated.status, stagesRaw)) {
+        if ((await criarContaReceber(updated)) === true) flash("Pedido entregue. Conta a receber criada no Financeiro.");
+      }
+    }
   }
   async function handleDelete(id) {
     setModal(null); setConfirmDel(null);
@@ -764,8 +775,47 @@ function PedidosApp() {
     regularizar: () => nfAbrir(o, "regularizar"),
   });
 
+  // Ao marcar como Entregue, o pedido entra em Financeiro → Contas a Receber (uma vez só: `contaReceberId` no pedido).
+  // Vencimento em branco, para preencher no Financeiro. Se já existir conta ligada ao pedido, não cria outra.
+  async function criarContaReceber(o) {
+    try {
+      const pedRef = db.collection(COL).doc(o.id);
+      const contaRef = db.collection("contas_receber").doc();
+      const quem = ((firebase.auth().currentUser || {}).email) || "";
+      let criada = false;
+      await db.runTransaction(async tx => {
+        const snap = await tx.get(pedRef);
+        if (!snap.exists) return;
+        const d = snap.data();
+        if (d.contaReceberId) return;
+        tx.set(contaRef, {
+          cliente: d.cliente || "", tipo: "pedido", vencimento: "", valor: Number(d.valor) || 0,
+          status: "pendente", dataRecebimento: "",
+          observacao: "Pedido " + o.id + (d.numero ? " · Nº " + d.numero : "") + (d.descricao ? " · " + d.descricao : ""),
+          pedidoId: o.id,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          criadoPor: quem, alteradoPor: quem,
+        });
+        tx.update(pedRef, {
+          contaReceberId: contaRef.id,
+          historico: [...(d.historico || []), { data: new Date().toISOString(), acao: "Conta a receber", detalhes: "Criada em Contas a Receber ao marcar como entregue" }],
+        });
+        criada = true;
+      });
+      return criada;
+    } catch (e) {
+      flash("O pedido foi atualizado, mas a conta a receber não foi criada: " + e.message + ". Use \"Gerar de pedidos\" no Financeiro.", "err");
+      return null;
+    }
+  }
   async function moveTo(o, to) {
     await fbSet(pushHistory({ ...o, status: to }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(to, stagesRaw)));
+    if (ehEntregue(to, stagesRaw)) {
+      const r = await criarContaReceber(o);
+      if (r === true) flash("Pedido entregue. Conta a receber criada no Financeiro.");
+      else if (r === false) flash("Pedido movido para " + stageLabel(to, stagesRaw).toLowerCase() + ".");
+      return;
+    }
     flash("Pedido movido para " + stageLabel(to, stagesRaw).toLowerCase() + ".");
   }
 

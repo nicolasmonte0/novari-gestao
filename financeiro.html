@@ -542,6 +542,10 @@ function grupoDaEtapa(id, todas) {
   if (/fatur/i.test(id) || (s && /fatur/i.test(s.label || ""))) return "faturamento";
   return "";
 }
+function etapaEntregue(id, etapas) {
+  const s = (etapas || []).find(x => x.id === id);
+  return id === 'entregue' || /^entregue\b/i.test((s && s.label) || '');
+}
 function useDocData(col, id) {
   const [data, setData] = useState(undefined);
   useEffect(() => {
@@ -555,7 +559,7 @@ function useDocData(col, id) {
   return data;
 }
 function GerarContaDialog({pedidos, onClose}) {
-  const [sel, setSel] = useState(() => pedidos.map(p => p.id));
+  const [sel, setSel] = useState(() => pedidos.filter(p => !p._entregue).map(p => p.id)); // já entregues antigos começam desmarcados
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const toggle = id => setSel(l => l.includes(id) ? l.filter(x => x !== id) : [...l, id]);
@@ -597,16 +601,16 @@ function GerarContaDialog({pedidos, onClose}) {
   }
 
   return (
-    <Dialog title="Gerar contas a receber de pedidos faturados" onClose={() => !saving && onClose()} onSave={gerar} saving={saving} err={err} saveLabel={'Gerar ' + escolhidos.length + (escolhidos.length === 1 ? ' conta' : ' contas')}>
+    <Dialog title="Gerar contas a receber de pedidos faturados e entregues" onClose={() => !saving && onClose()} onSave={gerar} saving={saving} err={err} saveLabel={'Gerar ' + escolhidos.length + (escolhidos.length === 1 ? ' conta' : ' contas')}>
       <div className="form">
-        {pedidos.length === 0 ? <div className="empty">Nenhum pedido faturado sem conta a receber.</div> : (
+        {pedidos.length === 0 ? <div className="empty">Nenhum pedido faturado ou entregue sem conta a receber.</div> : (
           <>
-            <p style={{margin:0,color:'var(--ink-2)',fontSize:13.5,lineHeight:1.5}}>Marque os pedidos que devem virar conta a receber. O vencimento fica em branco para você preencher depois.</p>
+            <p style={{margin:0,color:'var(--ink-2)',fontSize:13.5,lineHeight:1.5}}>Marque os pedidos que devem virar conta a receber. O vencimento fica em branco para você preencher depois. Pedidos já entregues antes desta função começam desmarcados: marque só os que ainda não foram lançados.</p>
             <div className="gc-list">
               {pedidos.map(p => (
                 <label className="gc-row" key={p.id}>
                   <input type="checkbox" checked={sel.includes(p.id)} onChange={() => toggle(p.id)} />
-                  <span className="gc-main"><b>{p.cliente || '(sem cliente)'}</b><small>{p.id}{p.numero ? ' · Nº ' + p.numero : ''}{p.descricao ? ' · ' + p.descricao : ''}</small></span>
+                  <span className="gc-main"><b>{p.cliente || '(sem cliente)'}</b><small>{p._entregue ? 'Entregue · ' : ''}{p.id}{p.numero ? ' · Nº ' + p.numero : ''}{p.descricao ? ' · ' + p.descricao : ''}</small></span>
                   <span className="gc-val">{fmtBRL(p.valor)}</span>
                 </label>
               ))}
@@ -632,7 +636,7 @@ function ContasReceberTab() {
   if (loading) return <div className="loading">Carregando…</div>;
 
   const etapas = (stagesDoc && Array.isArray(stagesDoc.list) && stagesDoc.list.length) ? stagesDoc.list : PEDIDOS_ETAPAS_PADRAO;
-  const faturados = pedidosCol.items.filter(p => grupoDaEtapa(p.status, etapas) === 'faturamento' && !p.contaReceberId);
+  const faturados = pedidosCol.items.filter(p => (grupoDaEtapa(p.status, etapas) === 'faturamento' || etapaEntregue(p.status, etapas)) && !p.contaReceberId).map(p => ({...p, _entregue: etapaEntregue(p.status, etapas)}));
 
   const itemsComStatus = items.map(c => ({...c, _status: contaStatus(c.vencimento, c.status)}));
   const filtered = filtro === 'todas' ? itemsComStatus :
@@ -657,7 +661,7 @@ function ContasReceberTab() {
         <div className="card-h">
           <h2><Icon name="arrow-up"/> Contas a Receber</h2>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <button className="btn" onClick={() => setGerarOpen(true)} disabled={pedidosCol.loading}><Icon name="plus"/> Gerar de pedidos faturados{faturados.length > 0 && <span className="gc-badge">{faturados.length}</span>}</button>
+            <button className="btn" onClick={() => setGerarOpen(true)} disabled={pedidosCol.loading}><Icon name="plus"/> Gerar de pedidos faturados/entregues{faturados.length > 0 && <span className="gc-badge">{faturados.length}</span>}</button>
             <button className="btn primary" onClick={() => {setEditItem(null); setShowForm(true);}}><Icon name="plus"/> Nova Fatura</button>
           </div>
         </div>
