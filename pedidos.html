@@ -81,6 +81,21 @@
 .ped-app .urg{display:inline-flex;align-items:center;gap:6px;color:var(--alert);font-size:12px;font-weight:600;white-space:nowrap}
 .ped-app .urg::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .ped-app .urg.alta{color:var(--warn)}
+.ped-app .nf{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;margin-left:auto}
+.ped-app .nf::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ped-app .nf.ok{background:var(--nf-ok-bg);color:var(--nf-ok-fg)}
+.ped-app .nf.sem{background:var(--nf-sem-bg);color:var(--nf-sem-fg)}
+.ped-app .nf.atr{background:var(--nf-atr-bg);color:var(--nf-atr-fg)}
+.ped-app .nf.emit{background:var(--nf-emit-bg);color:var(--nf-emit-fg)}
+.ped-app .nf.def{background:var(--nf-def-bg);color:var(--nf-def-fg)}
+.ped-app .nf-nota{font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.35}
+.ped-app .nf-act{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ped-app .btn.sm.pri{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.ped-app .nf-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;border-radius:10px;background:var(--nf-sem-bg);border:1px solid var(--nf-sem-line);color:var(--nf-sem-fg);font-size:13.5px}
+.ped-app .nf-banner.atr{background:var(--nf-atr-bg);border-color:var(--nf-atr-line);color:var(--nf-atr-fg)}
+.ped-app .nf-banner button{margin-left:auto;background:none;border:0;padding:0;font:inherit;font-weight:600;color:inherit;text-decoration:underline;cursor:pointer}
+.ped-app .nf-opts{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.ped-app .nf-lista .ss-r{align-items:center}
 .ped-app .card h3{margin:2px 0 0;font-size:14.5px;font-weight:600;letter-spacing:-.005em}
 .ped-app .desc{margin:1px 0 0;color:var(--ink-2);overflow-wrap:anywhere}
 .ped-app .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--ink-2);font-size:12.5px;font-variant-numeric:tabular-nums}
@@ -171,9 +186,9 @@
 .ped-app .rec-banner{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--alert-bg);border:1px solid var(--alert);border-radius:10px;color:var(--ink);font-size:13.5px}
 .ped-app .back-btn .ic{width:16px;height:16px}
 
-.ped-app{--alert-solid:#B42318;--s3:#566B94}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ped-app{--s3:#8497C4}}
-:root[data-theme="dark"] .ped-app{--s3:#8497C4}
+.ped-app{--alert-solid:#B42318;--s3:#566B94;--nf-ok-bg:#E3F6EA;--nf-ok-fg:#0B6B3A;--nf-sem-bg:#FFF1D6;--nf-sem-fg:#7A5200;--nf-sem-line:#F3DDA2;--nf-atr-bg:#FDE3E3;--nf-atr-fg:#B3151B;--nf-atr-line:#F2B8B8;--nf-emit-bg:#E4EEFF;--nf-emit-fg:#1F55B8;--nf-def-bg:#EDF0F6;--nf-def-fg:#5B6680}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ped-app{--s3:#8497C4;--nf-ok-bg:#12372A;--nf-ok-fg:#7EE0A8;--nf-sem-bg:#3A2E10;--nf-sem-fg:#F2C66B;--nf-sem-line:#5A4718;--nf-atr-bg:#431A1C;--nf-atr-fg:#FF9A9E;--nf-atr-line:#6B2A2D;--nf-emit-bg:#172B52;--nf-emit-fg:#8FB4FF;--nf-def-bg:#262E42;--nf-def-fg:#A9B3CC}}
+:root[data-theme="dark"] .ped-app{--s3:#8497C4;--nf-ok-bg:#12372A;--nf-ok-fg:#7EE0A8;--nf-sem-bg:#3A2E10;--nf-sem-fg:#F2C66B;--nf-sem-line:#5A4718;--nf-atr-bg:#431A1C;--nf-atr-fg:#FF9A9E;--nf-atr-line:#6B2A2D;--nf-emit-bg:#172B52;--nf-emit-fg:#8FB4FF;--nf-def-bg:#262E42;--nf-def-fg:#A9B3CC}
 .ped-app .top{border-top:0;border-radius:12px;border:1px solid var(--line);margin:16px 20px 0}
 .ped-app .center{min-height:60vh}
 .ped-app .brand{cursor:pointer}
@@ -437,6 +452,65 @@ function hasCusto(o) { return o.custo !== undefined && o.custo !== null && o.cus
 function custoTotal(o) { return (Number(o.custo) || 0) + (Number(o.frete) || 0) + (Number(o.despesas) || 0); }
 function lucro(o) { return (Number(o.valor) || 0) - custoTotal(o); }
 function margem(o) { const v = Number(o.valor) || 0; return v > 0 ? (lucro(o) / v) * 100 : null; }
+/* ---------- Documento fiscal (NF) ---------- */
+const NF_LIMITE = 7; // dias; depois disso a etiqueta "Sem NF" fica vermelha
+const NF_COLS = [
+  { key:"definir", titulo:"Definir nota", icon:"file",    cor:"#8B94AD" },
+  { key:"com",     titulo:"NF a emitir",  icon:"receipt", cor:"#2E6BE6" },
+  { key:"emitida", titulo:"NF emitida",   icon:"check",   cor:"#17A05D" },
+  { key:"sem",     titulo:"Sem NF",       icon:"alert",   cor:"#E3A21A" },
+];
+const NF_MOTIVOS = ["Cliente retira hoje", "Entrega urgente", "Cliente não exige nota", "Nota será emitida depois", "Outro motivo"];
+const NF_OPCOES = {
+  com:       "Com NF · a emitir",
+  emitida:   "NF emitida",
+  sem:       "Sem NF · nota sai depois",
+  encerrado: "Sem NF · não será emitida",
+};
+function nfGrupo(o) {
+  const s = o.nfStatus;
+  if (s === "com") return "com";
+  if (s === "emitida") return "emitida";
+  if (s === "sem" || s === "encerrado") return "sem";
+  return "definir";
+}
+function nfFiltroOk(o, f) {
+  if (!f || f === "todos") return true;
+  const g = nfGrupo(o);
+  if (f === "com") return g === "com" || g === "emitida";
+  return g === f;
+}
+function nfPendente(o) { return o.nfStatus === "sem"; }
+function nfDias(o) {
+  if (o.nfStatus !== "sem" || !o.nfEm) return null;
+  const ini = NovariData.parse(o.nfEm);
+  if (!ini) return null;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const i0 = new Date(ini); i0.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((hoje - i0) / 86400000));
+}
+function nfAtrasado(o) { const d = nfDias(o); return d !== null && d > NF_LIMITE; }
+function nfTag(o, mostrarDefinir) {
+  const s = o.nfStatus;
+  if (s === "emitida") return { cls: "ok", t: o.nfNumero ? "NF " + o.nfNumero : "NF emitida" };
+  if (s === "com") return { cls: "emit", t: "Com NF · a emitir" };
+  if (s === "sem") {
+    const d = nfDias(o);
+    const t = d === null || d === 0 ? "Sem NF" : "Sem NF há " + d + (d === 1 ? " dia" : " dias");
+    return { cls: nfAtrasado(o) ? "atr" : "sem", t };
+  }
+  if (s === "encerrado") return { cls: "def", t: "Sem NF · encerrado" };
+  return mostrarDefinir ? { cls: "def", t: "Definir" } : null;
+}
+function nfNota(o) {
+  if (o.nfStatus !== "sem" && o.nfStatus !== "encerrado") return "";
+  return [o.nfPor ? "Autorizado por " + o.nfPor : "", o.nfMotivo].filter(Boolean).join(" · ");
+}
+function nfTexto(o) {
+  const t = nfTag(o, false);
+  if (!t) return "";
+  return o.nfStatus === "sem" && nfDias(o) !== null ? "Sem NF (" + nfDias(o) + (nfDias(o) === 1 ? " dia" : " dias") + ")" : t.t;
+}
 function byPrazo(a, b) {
   if (!a.prazo && !b.prazo) return 0;
   if (!a.prazo) return 1;
@@ -491,6 +565,10 @@ function PedidosApp() {
   const [fieldsRaw, setFieldsRaw] = useState(DEFAULT_FIELDS);
   const [showFields, setShowFields] = useState(false);
   const [view, setView] = useState("modules"); // "modules" or module key
+  const [fNf, setFNf] = useState("todos");
+  const [fatModo, setFatModo] = useState("nf"); // "nf" = colunas por documento fiscal | "etapa" = colunas por etapa
+  const [nfDlg, setNfDlg] = useState(null);     // { id, modo }
+  const [showNfList, setShowNfList] = useState(false);
   const fileRef = useRef(null);
 
   const stagesFlow = React.useMemo(() => stagesRaw.map((s, i) => ({
@@ -625,6 +703,49 @@ function PedidosApp() {
     await fbDel(id);
     flash("Pedido movido para a lixeira.");
   }
+  /* ----- Documento fiscal ----- */
+  function nfAbrir(o, modo, avancar) { setDetailId(null); setModal(null); setShowNfList(false); setNfDlg({ id: o.id, modo: modo || "todas", avancar: avancar || null }); }
+  // Saindo do Faturamento sem ter definido a nota: pergunta antes, para não esquecer.
+  function avancarPedido(o, s) {
+    if (!s.next) return;
+    if (!o.nfStatus && groupOfStage(o.status, stagesRaw) === "faturamento" && groupOfStage(s.next, stagesRaw) !== "faturamento") return nfAbrir(o, "avancar", s.next);
+    moveTo(o, s.next);
+  }
+  async function nfGravar(o, d) {
+    const hoje = NovariData.hoje();
+    const st = d.status;
+    const dados = { nfStatus: st };
+    let det = NF_OPCOES[st] || st;
+    if (st === "emitida") {
+      dados.nfNumero = d.numero; dados.nfData = d.data || hoje; dados.nfLink = d.link || "";
+      if (o.nfStatus === "sem") dados.nfRegularizadoEm = hoje;
+      det = "NF emitida nº " + d.numero + (o.nfStatus === "sem" ? " (regularizada)" : "");
+    }
+    if (st === "sem" || st === "encerrado") {
+      dados.nfPor = d.por; dados.nfMotivo = d.motivo; dados.nfObs = d.obs || "";
+      if (st === "sem" && o.nfStatus !== "sem") dados.nfEm = hoje;
+      if (st === "encerrado" && o.nfStatus === "sem") dados.nfRegularizadoEm = hoje;
+      det = NF_OPCOES[st] + " · autorizado por " + d.por + " · " + d.motivo;
+    }
+    const avancar = nfDlg && nfDlg.avancar;
+    setNfDlg(null);
+    let novo = pushHistory({ ...o, ...dados }, "Documento fiscal", det);
+    if (avancar) novo = pushHistory({ ...novo, status: avancar }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(avancar, stagesRaw));
+    await fbSet(novo);
+    if (avancar) { flash("Pedido movido para " + stageLabel(avancar, stagesRaw).toLowerCase() + (st === "sem" ? " (sem NF — fica no alerta)." : ".")); return; }
+    flash(st === "sem" ? "Registrado: entrega sem NF. Fica no alerta até regularizar." : "Documento fiscal atualizado.");
+  }
+  async function nfComRapido(o) {
+    await fbSet(pushHistory({ ...o, nfStatus: "com" }, "Documento fiscal", NF_OPCOES.com));
+    flash("Marcado como Com NF (a emitir).");
+  }
+  const nfAcoes = o => ({
+    com: () => nfComRapido(o),
+    sem: () => nfAbrir(o, "sem"),
+    informar: () => nfAbrir(o, "informar"),
+    regularizar: () => nfAbrir(o, "regularizar"),
+  });
+
   async function moveTo(o, to) {
     await fbSet(pushHistory({ ...o, status: to }, "Etapa alterada", stageLabel(o.status, stagesRaw) + " → " + stageLabel(to, stagesRaw)));
     flash("Pedido movido para " + stageLabel(to, stagesRaw).toLowerCase() + ".");
@@ -635,7 +756,7 @@ function PedidosApp() {
     const h = ["ID", fieldLabel("numero", fieldsRaw), "Cliente", "Descrição", fieldLabel("quantidade", fieldsRaw),
       fieldLabel("valorUnit", fieldsRaw), fieldLabel("valor", fieldsRaw), fieldLabel("custo", fieldsRaw), fieldLabel("frete", fieldsRaw),
       fieldLabel("despesas", fieldsRaw), "Lucro (R$)", "Margem (%)", fieldLabel("prazo", fieldsRaw), "Etapa",
-      fieldLabel("prioridade", fieldsRaw), fieldLabel("responsavel", fieldsRaw), fieldLabel("observacoes", fieldsRaw), "Criado em",
+      fieldLabel("prioridade", fieldsRaw), fieldLabel("responsavel", fieldsRaw), fieldLabel("observacoes", fieldsRaw), "Documento fiscal", "Criado em",
       ...customFields.map(f => f.label)];
     const rows = orders.map(o => [
       o.id, o.numero || "", o.cliente, o.descricao, o.quantidade || "", o.valorUnit || "", o.valor || "",
@@ -643,7 +764,7 @@ function PedidosApp() {
       hasCusto(o) ? lucro(o).toFixed(2) : "", hasCusto(o) && margem(o) !== null ? margem(o).toFixed(1) : "",
       o.prazo ? formatDate(o.prazo) : "", stageLabel(o.status, stagesRaw),
       (PRIORITIES.find(p => p.id === o.prioridade) || {}).label || o.prioridade || "",
-      o.responsavel || "", o.observacoes || "", o.criadoEm ? new Date(o.criadoEm).toLocaleDateString("pt-BR") : "",
+      o.responsavel || "", o.observacoes || "", nfTexto(o), o.criadoEm ? new Date(o.criadoEm).toLocaleDateString("pt-BR") : "",
       ...customFields.map(f => (o.extras && o.extras[f.key]) || "")
     ].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(","));
     download(new Blob(["\uFEFF" + [h.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8;" }), "pedidos-" + todayStr() + ".csv");
@@ -664,11 +785,12 @@ function PedidosApp() {
           "</td><td class='r'>" + esc(o.valor ? formatBRL(o.valor) : "—") +
           "</td><td class='r" + (hasCusto(o) && lucro(o) < 0 ? " late" : "") + "'>" + esc(hasCusto(o) ? formatBRL(lucro(o)) : "—") +
           "</td><td class='" + (late ? "late" : "") + "'>" + esc(formatDate(o.prazo)) +
+          "</td><td class='" + (o.nfStatus === "sem" && nfAtrasado(o) ? "late" : "") + "'>" + esc(nfTexto(o) || "—") +
           "</td><td>" + esc(o.observacoes ? tidy(o.observacoes) : "—") + "</td></tr>";
       }).join("");
       return "<div class='sec-h'><h4>" + s.label + "</h4><span>" + items.length + (items.length === 1 ? " pedido" : " pedidos") + "</span>" +
         (v > 0 ? "<span>" + formatBRL(v) + "</span>" : "") + "</div>" +
-        "<table><thead><tr><th>Nº</th><th>Cliente</th><th>Descrição</th><th class='r'>Qtd</th><th class='r'>Valor</th><th class='r'>Lucro</th><th>Prazo</th><th>Observações</th></tr></thead><tbody>" + rows + "</tbody></table>";
+        "<table><thead><tr><th>Nº</th><th>Cliente</th><th>Descrição</th><th class='r'>Qtd</th><th class='r'>Valor</th><th class='r'>Lucro</th><th>Prazo</th><th>Doc. fiscal</th><th>Observações</th></tr></thead><tbody>" + rows + "</tbody></table>";
     }).join("");
     const comCustoPDF = orders.filter(hasCusto);
     const lucroTotalPDF = comCustoPDF.reduce((s, o) => s + lucro(o), 0);
@@ -753,8 +875,11 @@ function PedidosApp() {
   const counts = {};
   stagesRaw.forEach(s => { counts[s.id] = orders.filter(o => o.status === s.id).length; });
   const lateCount = orders.filter(isOverdue).length;
-  const shown = stagesRaw.filter(s => fStage === "todos" || fStage === s.id).reduce((n, s) => n + stageList(s.id).length, 0);
+  const shown = stagesRaw.filter(s => fStage === "todos" || fStage === s.id).reduce((n, s) => n + stageList(s.id).filter(o => nfFiltroOk(o, fNf)).length, 0);
   const detailOrder = detailId ? orders.find(o => o.id === detailId) : null;
+  const nfPend = orders.filter(nfPendente).sort((a, b) => (nfDias(b) || 0) - (nfDias(a) || 0));
+  const nfAtras = nfPend.filter(nfAtrasado).length;
+  const nfDlgOrder = nfDlg ? orders.find(o => o.id === nfDlg.id) : null;
 
   if (loading) return <div className="center"><div className="spin"></div><p style={{ color: "var(--muted)" }}>Conectando ao Firebase…</p></div>;
   if (connErr) return (
@@ -782,7 +907,7 @@ function PedidosApp() {
     <FieldsCtx.Provider value={fieldsRaw}>
 
       <header className="top">
-        <div className="brand" onClick={() => { setView("modules"); setFStage("todos"); setSearch(""); setFPrio("all"); }} title="Voltar aos módulos">
+        <div className="brand" onClick={() => { setView("modules"); setFStage("todos"); setFNf("todos"); setSearch(""); setFPrio("all"); }} title="Voltar aos módulos">
           <div>
             <div className="brand-name">Pedidos</div>
             <div className="brand-sub">{view === "modules" ? "Módulos e etapas" : "Voltar aos módulos"}</div>
@@ -818,6 +943,13 @@ function PedidosApp() {
               <button className="btn primary" onClick={() => setShowRecover(true)}>Recuperar etapas</button>
             </div>
           )}
+          {nfPend.length > 0 && (
+            <div className={"nf-banner" + (nfAtras > 0 ? " atr" : "")} role="alert">
+              <Ic n="alert" style={{ width: 16, height: 16 }} />
+              <span><b>{nfPend.length} {nfPend.length === 1 ? "pedido entregue sem NF" : "pedidos entregues sem NF"}</b> aguardando regularização{nfAtras > 0 ? " — " + nfAtras + " há mais de " + NF_LIMITE + " dias" : ""}.</span>
+              <button onClick={() => setShowNfList(true)}>Ver lista</button>
+            </div>
+          )}
           <div className="mod-summary">
             <div className="stat"><span className="n">{orders.length}</span><span className="t">pedidos no total</span></div>
             <div className="stat"><span className="n">{formatBRL(sumVal(orders))}</span><span className="t">em carteira</span></div>
@@ -832,7 +964,7 @@ function PedidosApp() {
               const val = moduleOrderVal(m);
               const late = moduleLateCount(m);
               return (
-                <button key={m.key} className="mod-card" onClick={() => { setView(m.key); setFStage("todos"); setSearch(""); setFPrio("all"); }}>
+                <button key={m.key} className="mod-card" onClick={() => { setView(m.key); setFStage("todos"); setFNf("todos"); setSearch(""); setFPrio("all"); }}>
                   <span className="mod-count">{cnt}</span>
                   <div className="mod-icon" style={{background:m.bg, color:m.fg}}><Ic n={m.icon} /></div>
                   <h3>{m.nome}</h3>
@@ -843,7 +975,7 @@ function PedidosApp() {
               );
             })}
             {unmatchedCount > 0 && (
-              <button className="mod-card" onClick={() => { setView("outros"); setFStage("todos"); setSearch(""); setFPrio("all"); }}>
+              <button className="mod-card" onClick={() => { setView("outros"); setFStage("todos"); setFNf("todos"); setSearch(""); setFPrio("all"); }}>
                 <span className="mod-count">{unmatchedCount}</span>
                 <div className="mod-icon" style={{background:"var(--col)", color:"var(--muted)"}}><Ic n="package" /></div>
                 <h3>Outros</h3>
@@ -855,9 +987,17 @@ function PedidosApp() {
       ) : (
         /* ---------- Kanban filtrado por módulo ---------- */
         <main className="wrap">
-          <button className="back-btn" onClick={() => { setView("modules"); setFStage("todos"); setSearch(""); setFPrio("all"); }}>
+          <button className="back-btn" onClick={() => { setView("modules"); setFStage("todos"); setFNf("todos"); setSearch(""); setFPrio("all"); }}>
             <Ic n="back" /> Voltar aos módulos
           </button>
+
+          {(view === "faturamento" || view === "logistica") && nfPend.length > 0 && (
+            <div className={"nf-banner" + (nfAtras > 0 ? " atr" : "")} role="alert">
+              <Ic n="alert" style={{ width: 16, height: 16 }} />
+              <span><b>{nfPend.length} {nfPend.length === 1 ? "pedido entregue sem NF" : "pedidos entregues sem NF"}</b> aguardando regularização{nfAtras > 0 ? " — " + nfAtras + " há mais de " + NF_LIMITE + " dias" : ""}.</span>
+              <button onClick={() => setShowNfList(true)}>Ver lista</button>
+            </div>
+          )}
 
           <section className="pano" aria-label="Panorama dos pedidos">
             <div className="pano-head">
@@ -887,6 +1027,24 @@ function PedidosApp() {
                 </button>
               ))}
             </div>
+            {(view === "faturamento" || view === "logistica") && (
+              <div className="legend" aria-label="Filtrar por documento fiscal">
+                <span style={{ color: "var(--muted)", fontSize: 12.5, fontWeight: 600, alignSelf: "center" }}>Documento fiscal:</span>
+                {[["todos", "Todos"], ["com", "Com NF"], ["sem", "Sem NF"], ["definir", "Definir"]].map(([k, l]) => {
+                  const base = view === "faturamento" ? orders.filter(o => viewStages.some(s => s.id === o.status)) : orders.filter(o => viewStages.some(s => s.id === o.status));
+                  return (
+                    <button key={k} className="chip" aria-pressed={fNf === k} onClick={() => setFNf(fNf === k && k !== "todos" ? "todos" : k)}>
+                      {k !== "todos" && <span className="sw" style={{ background: k === "com" ? "#17A05D" : k === "sem" ? "#E3A21A" : "#8B94AD" }}></span>}{l} <b>{base.filter(o => nfFiltroOk(o, k)).length}</b>
+                    </button>
+                  );
+                })}
+                {view === "faturamento" && (
+                  <button className="btn sm" style={{ marginLeft: "auto" }} onClick={() => setFatModo(fatModo === "nf" ? "etapa" : "nf")}>
+                    {fatModo === "nf" ? "Ver por etapa" : "Ver por documento fiscal"}
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           <div className="tools">
@@ -902,9 +1060,37 @@ function PedidosApp() {
             <span className="count">Mostrando {shown} de {orders.length} pedidos</span>
           </div>
 
+          {view === "faturamento" && fatModo === "nf" ? (
+          <div className="board">
+            {NF_COLS.filter(c => fNf === "todos" || (fNf === "com" ? (c.key === "com" || c.key === "emitida") : fNf === c.key)).map(c => {
+              let list = visible.filter(o => viewStages.some(s => s.id === o.status) && nfGrupo(o) === c.key && (fStage === "todos" || fStage === o.status));
+              list = c.key === "sem"
+                ? list.sort((a, b) => (nfDias(b) === null ? -1 : nfDias(b)) - (nfDias(a) === null ? -1 : nfDias(a)))
+                : list.sort(byPrazo);
+              const v = sumVal(list);
+              return (
+                <section className="col" key={c.key}>
+                  <div className="col-h">
+                    <Ic n={c.icon} style={{ color: c.cor }} /><h2>{c.titulo}</h2><span className="badge">{list.length}</span>
+                    {v > 0 && <span className="sum">{formatBRL(v)}</span>}
+                  </div>
+                  {list.length === 0 && <p className="empty">Nenhum pedido aqui.</p>}
+                  <Paginado itens={list} por={40}>{o => {
+                    const st = stagesFlow.find(x => x.id === o.status) || { id: o.status, label: o.status };
+                    return (
+                      <OrderCard key={o.id} o={o} stage={st} nfAct={nfAcoes(o)}
+                        onOpen={() => openDetail(o)} onEdit={() => openEdit(o)} onDel={() => setConfirmDel(o.id)}
+                        onNext={() => avancarPedido(o, st)} onPrev={() => st.prev && moveTo(o, st.prev)} />
+                    );
+                  }}</Paginado>
+                </section>
+              );
+            })}
+          </div>
+          ) : (
           <div className="board">
             {(view === "outros" ? stagesFlow.filter(s => unmatchedStages.some(u => u.id === s.id)) : viewStagesFlow).filter(s => fStage === "todos" || fStage === s.id).map(s => {
-              const list = stageList(s.id);
+              const list = stageList(s.id).filter(o => nfFiltroOk(o, fNf));
               const v = sumVal(list);
               return (
                 <section className="col" key={s.id}>
@@ -914,17 +1100,20 @@ function PedidosApp() {
                   </div>
                   {list.length === 0 && <p className="empty">Nenhum pedido nesta etapa.</p>}
                   <Paginado itens={list} por={40}>{o => (
-                    <OrderCard key={o.id} o={o} stage={s}
+                    <OrderCard key={o.id} o={o} stage={s} nfAct={(view === "faturamento" || view === "logistica") ? nfAcoes(o) : null}
                       onOpen={() => openDetail(o)} onEdit={() => openEdit(o)} onDel={() => setConfirmDel(o.id)}
-                      onNext={() => s.next && moveTo(o, s.next)} onPrev={() => s.prev && moveTo(o, s.prev)} />
+                      onNext={() => avancarPedido(o, s)} onPrev={() => s.prev && moveTo(o, s.prev)} />
                   )}</Paginado>
                 </section>
               );
             })}
           </div>
+          )}
         </main>
       )}
 
+      {showNfList && <Overlay onClose={() => setShowNfList(false)}><NfPendentes lista={nfPend} onClose={() => setShowNfList(false)} onRegularizar={o => nfAbrir(o, "regularizar")} onAbrir={o => { setShowNfList(false); openDetail(o); }} /></Overlay>}
+      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
       {showSum && <Overlay onClose={() => setShowSum(false)}><DailySummary orders={orders} onClose={() => setShowSum(false)} /></Overlay>}
       {showRecover && <Overlay onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
       {showStages && <Overlay onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
@@ -948,7 +1137,7 @@ function PedidosApp() {
 
       {modal === "detail" && detailOrder && (
         <Overlay onClose={() => setModal(null)}>
-          <DetailPanel o={detailOrder} onClose={() => setModal(null)} onEdit={() => openEdit(detailOrder)} onDelete={() => setConfirmDel(detailOrder.id)} />
+          <DetailPanel o={detailOrder} onClose={() => setModal(null)} onEdit={() => openEdit(detailOrder)} onDelete={() => setConfirmDel(detailOrder.id)} onNf={() => nfAbrir(detailOrder, "todas")} />
         </Overlay>
       )}
 
@@ -988,8 +1177,11 @@ function PedidosApp() {
 }
 
 /* ---------- Cartão do pedido ---------- */
-function OrderCard({ o, stage, onOpen, onEdit, onDel, onNext, onPrev }) {
+function OrderCard({ o, stage, onOpen, onEdit, onDel, onNext, onPrev, nfAct }) {
   const fields = useFields();
+  const stagesCtx = useStages();
+  const tag = nfTag(o, groupOfStage(o.status, stagesCtx) === "faturamento");
+  const nota = nfNota(o);
   const late = isOverdue(o);
   const due = dueInfo(o);
   const stop = e => e.stopPropagation();
@@ -1001,6 +1193,7 @@ function OrderCard({ o, stage, onOpen, onEdit, onDel, onNext, onPrev }) {
         <span className="num">{o.numero || o.id}</span>
         {o.prioridade === "urgente" && <span className="urg">Urgente</span>}
         {o.prioridade === "alta" && <span className="urg alta">Prioridade alta</span>}
+        {tag && <span className={"nf " + tag.cls}>{tag.t}</span>}
       </div>
       <h3>{o.cliente}</h3>
       <p className="desc">{tidy(o.descricao)}</p>
@@ -1021,6 +1214,17 @@ function OrderCard({ o, stage, onOpen, onEdit, onDel, onNext, onPrev }) {
       {customFields.map(f => <div className="meta" key={f.key}><span>{f.label}: {o.extras[f.key]}</span></div>)}
       {due && <div className={"due " + due.k}><Ic n={due.k === "late" ? "alert" : "calendar"} /><span>{due.t}</span>{due.r && <em>{due.r}</em>}</div>}
       {o.observacoes && <p className="obs">{tidy(o.observacoes)}</p>}
+      {nota && <p className="nf-nota">{nota}</p>}
+      {nfAct && (
+        <div className="nf-act" onClick={stop}>
+          {!o.nfStatus && groupOfStage(o.status, stagesCtx) === "faturamento" && <React.Fragment>
+            <button className="btn sm pri" onClick={nfAct.com}>Com NF</button>
+            <button className="btn sm" onClick={nfAct.sem}>Sem NF</button>
+          </React.Fragment>}
+          {o.nfStatus === "com" && <button className="btn sm pri" onClick={nfAct.informar}>Informar nº da NF</button>}
+          {o.nfStatus === "sem" && <button className="btn sm" onClick={nfAct.regularizar}>Regularizar</button>}
+        </div>
+      )}
       <div className="c-act" onClick={stop}>
         {stage.actText ? <button className="btn sm" onClick={onNext}>{stage.actText}</button> : <span></span>}
         <span className="pib">
@@ -1034,7 +1238,7 @@ function OrderCard({ o, stage, onOpen, onEdit, onDel, onNext, onPrev }) {
 }
 
 /* ---------- Detalhes ---------- */
-function DetailPanel({ o, onClose, onEdit, onDelete }) {
+function DetailPanel({ o, onClose, onEdit, onDelete, onNf }) {
   const [tab, setTab] = useState("info");
   const stages = useStages();
   const fields = useFields();
@@ -1058,6 +1262,7 @@ function DetailPanel({ o, onClose, onEdit, onDelete }) {
     [fieldLabel("responsavel", fields), o.responsavel || "—"],
     [fieldLabel("observacoes", fields), o.observacoes || "—"],
     ...customFields.map(f => [f.label, o.extras[f.key]]),
+    ["Documento fiscal", (nfTexto(o) || "Não informado") + (o.nfStatus === "sem" || o.nfStatus === "encerrado" ? (nfNota(o) ? " — " + nfNota(o) : "") : "") + (o.nfStatus === "emitida" && o.nfData ? " · emitida em " + NovariData.mostrar(o.nfData) : ""), nfAtrasado(o)],
     ["Criado em", formatDT(o.criadoEm)],
   ];
   return (
@@ -1091,6 +1296,7 @@ function DetailPanel({ o, onClose, onEdit, onDelete }) {
       <div className="dlg-f">
         <button className="btn danger" onClick={onDelete}><Ic n="trash" />Excluir</button>
         <span className="grow"></span>
+        {onNf && <button className="btn" onClick={onNf}><Ic n="receipt" />Documento fiscal</button>}
         <button className="btn primary" onClick={onEdit}><Ic n="pencil" />Editar pedido</button>
       </div>
     </div>
@@ -1098,12 +1304,117 @@ function DetailPanel({ o, onClose, onEdit, onDelete }) {
 }
 
 /* ---------- Resumo do dia ---------- */
+function NfDialog({ o, modo, onClose, onSave }) {
+  const permitidas = modo === "avancar" ? ["com", "emitida", "sem", "encerrado"] : modo === "sem" ? ["sem"] : modo === "informar" ? ["emitida"] : modo === "regularizar" ? ["emitida", "encerrado"] : ["com", "emitida", "sem", "encerrado"];
+  const inicial = modo === "todas" ? (o.nfStatus || "com") : permitidas[0];
+  const lembrado = (() => { try { return localStorage.getItem("novari-nf-por") || ""; } catch (e) { return ""; } })();
+  const motivoIni = NF_MOTIVOS.includes(o.nfMotivo) ? o.nfMotivo : (o.nfMotivo ? "Outro motivo" : "");
+  const [st, setSt] = useState(inicial);
+  const [numero, setNumero] = useState(o.nfNumero || "");
+  const [data, setData] = useState(o.nfData || NovariData.hoje());
+  const [link, setLink] = useState(o.nfLink || "");
+  const [por, setPor] = useState(o.nfPor || lembrado);
+  const [motivo, setMotivo] = useState(motivoIni);
+  const [outro, setOutro] = useState(motivoIni === "Outro motivo" ? (o.nfMotivo || "") : "");
+  const [obs, setObs] = useState(o.nfObs || "");
+  const [erro, setErro] = useState("");
+  const titulo = modo === "avancar" ? "Como segue a nota fiscal?" : modo === "sem" ? "Entregar sem nota fiscal" : modo === "informar" ? "Informar nota fiscal" : modo === "regularizar" ? "Regularizar nota fiscal" : "Documento fiscal";
+  const semOuEnc = st === "sem" || st === "encerrado";
+  function salvar() {
+    if (st === "emitida" && !numero.trim()) return setErro("Informe o número da nota fiscal.");
+    if (semOuEnc) {
+      if (!por.trim()) return setErro("Informe quem autorizou.");
+      if (!motivo) return setErro("Escolha o motivo.");
+      if (motivo === "Outro motivo" && !outro.trim()) return setErro("Descreva o motivo.");
+      try { localStorage.setItem("novari-nf-por", por.trim()); } catch (e) {}
+    }
+    onSave({ status: st, numero: numero.trim(), data, link: link.trim(), por: por.trim(),
+      motivo: motivo === "Outro motivo" ? outro.trim() : motivo, obs: obs.trim() });
+  }
+  return (
+    <div className="dlg" role="dialog" aria-modal="true" aria-label={titulo}>
+      <div className="dlg-h">
+        <div><div className="sub">{o.numero || o.id}</div><h2>{titulo}</h2>
+          <div className="sub" style={{ fontSize: 13.5, color: "var(--ink-2)" }}>{o.cliente}{o.valor ? " · " + formatBRL(o.valor) : ""}</div></div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="dlg-b">
+        {modo === "avancar" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>Antes de sair do Faturamento, informe a situação da nota. O pedido é movido para a próxima etapa ao salvar.</p>}
+        {modo === "sem" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>O pedido segue para a entrega e fica no alerta <b>Sem NF</b> até você informar a nota. Fica registrado quem autorizou e o motivo.</p>}
+        {modo === "regularizar" && o.nfStatus === "sem" && <p style={{ margin: "0 0 14px", color: "var(--ink-2)" }}>Este pedido foi entregue sem NF{nfDias(o) ? " há " + nfDias(o) + " dias" : ""}. Informe a nota emitida ou encerre o alerta se ela não será emitida.</p>}
+        {permitidas.length > 1 && (
+          <div className="nf-opts" role="radiogroup" aria-label="Situação da nota">
+            {permitidas.map(k => <button key={k} type="button" className="chip" aria-pressed={st === k} onClick={() => { setSt(k); setErro(""); }}>{NF_OPCOES[k]}</button>)}
+          </div>
+        )}
+        {st === "com" && <p style={{ margin: 0, color: "var(--ink-2)" }}>Marca o pedido como <b>Com NF</b>. Depois você informa o número quando a nota for emitida.</p>}
+        {st === "emitida" && (
+          <div className="row2">
+            <Field label="Número da NF *"><input className="inp" value={numero} onChange={e => setNumero(e.target.value)} autoFocus placeholder="Ex.: 1234" /></Field>
+            <Field label="Data de emissão"><CampoData className="inp" value={data} onChange={setData} /></Field>
+            <div className="f" style={{ gridColumn: "1 / -1" }}><label>Link do PDF/XML (opcional)</label><input className="inp" value={link} onChange={e => setLink(e.target.value)} placeholder="https://…" /></div>
+          </div>
+        )}
+        {semOuEnc && (
+          <div className="row2">
+            <Field label="Autorizado por *"><input className="inp" value={por} onChange={e => setPor(e.target.value)} placeholder="Nome de quem autorizou" /></Field>
+            <Field label="Motivo *">
+              <select className="inp" value={motivo} onChange={e => setMotivo(e.target.value)}>
+                <option value="">Selecione…</option>
+                {NF_MOTIVOS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </Field>
+            {motivo === "Outro motivo" && <div className="f" style={{ gridColumn: "1 / -1" }}><label>Descreva o motivo *</label><input className="inp" value={outro} onChange={e => setOutro(e.target.value)} /></div>}
+            <div className="f" style={{ gridColumn: "1 / -1" }}><label>Observação (opcional)</label><input className="inp" value={obs} onChange={e => setObs(e.target.value)} /></div>
+          </div>
+        )}
+        {erro && <p role="alert" style={{ margin: "12px 0 0", color: "var(--alert)", fontWeight: 600, fontSize: 13 }}>{erro}</p>}
+      </div>
+      <div className="dlg-f">
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn primary" onClick={salvar}>{st === "sem" ? "Confirmar entrega sem NF" : modo === "avancar" ? "Salvar e avançar" : st === "emitida" ? "Salvar nota" : "Salvar"}</button>
+      </div>
+    </div>
+  );
+}
+
+function NfPendentes({ lista, onClose, onRegularizar, onAbrir }) {
+  return (
+    <div className="dlg nf-lista" role="dialog" aria-modal="true" aria-label="Pedidos sem NF">
+      <div className="dlg-h">
+        <div><h2>Sem NF a regularizar ({lista.length})</h2><div className="sub">Mais antigos primeiro · total {formatBRL(sumVal(lista))}</div></div>
+        <button className="x" onClick={onClose} aria-label="Fechar"><Ic n="x" /></button>
+      </div>
+      <div className="dlg-b">
+        {lista.length === 0 && <p style={{ color: "var(--muted)" }}>Nenhum pedido sem NF. Tudo regularizado.</p>}
+        {lista.map(o => {
+          const t = nfTag(o, false);
+          return (
+            <div className="ss-r" key={o.id}>
+              <div style={{ cursor: "pointer" }} onClick={() => onAbrir(o)}>
+                <b style={{ fontWeight: 600 }}>{o.numero || o.id} · {o.cliente}</b>
+                <small>{o.valor ? formatBRL(o.valor) + " · " : ""}{nfNota(o) || "—"}</small>
+              </div>
+              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span className={"nf " + t.cls} style={{ marginLeft: 0 }}>{t.t}</span>
+                <button className="btn sm" onClick={() => onRegularizar(o)}>Regularizar</button>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="dlg-f"><span className="grow"></span><button className="btn" onClick={onClose}>Fechar</button></div>
+    </div>
+  );
+}
+
 function DailySummary({ orders, onClose }) {
   const late = orders.filter(isOverdue).sort(byPrazo);
   const soon = orders.filter(o => { const d = dayDiff(o.prazo); return d !== null && d >= 0 && d <= 7 && o.status !== "entregue"; }).sort(byPrazo);
   const soon3 = soon.filter(o => dayDiff(o.prazo) <= 3);
   const week = soon.filter(o => dayDiff(o.prazo) > 3);
   const hist = orders.flatMap(o => (o.historico || []).map(h => ({ ...h, cliente: o.cliente }))).sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 6);
+  const semNf = orders.filter(nfPendente).sort((a, b) => (nfDias(b) || 0) - (nfDias(a) || 0));
   const total = sumVal(orders);
   const ent = sumVal(orders.filter(o => o.status === "entregue"));
   const comCusto = orders.filter(hasCusto);
@@ -1140,10 +1451,11 @@ function DailySummary({ orders, onClose }) {
             <b style={{ fontWeight: 600, color: "var(--ink)" }}>Lucratividade</b> — {comCusto.length} de {orders.length} pedidos com custo informado · Lucro total: <b style={{ color: lucroTotal < 0 ? "var(--alert)" : "var(--ok)" }}>{formatBRL(lucroTotal)}</b>{margemMedia !== null ? " · Margem média: " + margemMedia.toFixed(1) + "%" : ""}
           </div>
         )}
+        {rest(semNf, nfAtrasado(semNf[0] || {}) ? "bad" : "soon", "receipt", "Sem NF a regularizar", o => { const d = nfDias(o); return d === null ? "pendente" : d === 0 ? "desde hoje" : "há " + d + (d === 1 ? " dia" : " dias"); })}
         {rest(late, "bad", "alert", "Atrasados", o => "venceu em " + formatDate(o.prazo))}
         {rest(soon3, "soon", "clock", "Vencem em até 3 dias", o => { const d = dayDiff(o.prazo); return d === 0 ? "hoje" : d === 1 ? "amanhã" : "em " + d + " dias"; })}
         {rest(week, "", "calendar", "Vencem esta semana", o => "em " + dayDiff(o.prazo) + " dias")}
-        {late.length === 0 && soon.length === 0 && <p className="ss-ok">Nenhum pedido atrasado ou vencendo em breve.</p>}
+        {late.length === 0 && soon.length === 0 && semNf.length === 0 && <p className="ss-ok">Nenhum pedido atrasado ou vencendo em breve.</p>}
         {hist.length > 0 && (
           <div className="ss">
             <h4>Últimas movimentações</h4>

@@ -34,6 +34,7 @@
 
 /* stat tiles */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stats.s5{grid-template-columns:repeat(5,1fr)}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px}
 .stat .row1{display:flex;align-items:center;justify-content:space-between}
 .stat .chip{width:40px;height:40px;border-radius:11px;display:grid;place-items:center}
@@ -124,11 +125,12 @@
 .mv .mw{margin-left:auto;font-size:11px;color:var(--muted);flex:none;white-space:nowrap}
 
 @media (max-width:1140px){ .wrap{grid-template-columns:1fr} .charts{grid-template-columns:1fr} }
-@media (max-width:980px){ .stats{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr} }
+@media (max-width:1280px){ .stats.s5{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:980px){ .stats,.stats.s5{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr} }
 @media (max-width:820px){
 }
 @media (max-width:520px){
-  .stats{grid-template-columns:1fr 1fr}
+  .stats,.stats.s5{grid-template-columns:1fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -398,12 +400,22 @@ function useEtapas(){
   }, []);
   return lista || ETAPAS_PADRAO;
 }
+/* Pedidos entregues sem NF (marcados no módulo Pedidos). Somente leitura. */
+function nfSemPendentes(pedidos){ return pedidos.filter(p => p.nfStatus === 'sem'); }
+function nfSemDias(p){
+  const d = p.nfEm ? NovariData.parse(p.nfEm) : null;
+  if(!d) return null;
+  const h = new Date(); h.setHours(0,0,0,0); const i = new Date(d); i.setHours(0,0,0,0);
+  return Math.max(0, Math.round((h - i)/86400000));
+}
 function Operacao({orcamentos, pedidos, receber, etapas}){
   const somaValor = arr => arr.reduce((s,x)=>s+Number(x.valor||0),0);
   const emAnalise = orcamentos.filter(o => (o.status||'analise') === 'analise');
   const ativos = pedidos.filter(p => { const g = grupoDaEtapa(p.status, etapas); return g === 'pendente' || g === 'producao'; });
   const aFaturar = pedidos.filter(p => grupoDaEtapa(p.status, etapas) === 'faturamento');
   const vencidas = receber.filter(c => c.status !== 'recebido' && c.vencimento && diasAte(c.vencimento) < 0);
+  const semNf = nfSemPendentes(pedidos);
+  const semNfAtras = semNf.filter(p => (nfSemDias(p) || 0) > 7).length;
   const card = (cls, icon, val, cap, sub, destino, extra) => (
     <button type="button" className="stat statgo" onClick={() => go({key:destino})}>
       <div className="row1"><div className={'chip ' + cls}><Icon name={icon} /></div>{extra}</div>
@@ -412,11 +424,12 @@ function Operacao({orcamentos, pedidos, receber, etapas}){
     </button>
   );
   return (
-    <section className="stats">
+    <section className={'stats' + (semNf.length ? ' s5' : '')}>
       {card('cs','trending', emAnalise.length, 'Orçamentos em análise', fmtBRL(somaValor(emAnalise)), 'vendas')}
       {card('cb','package', ativos.length, 'Pedidos em andamento', 'Pendentes e em produção', 'pedidos')}
       {card('cg','wallet', aFaturar.length, 'Aguardando faturamento', fmtBRL(somaValor(aFaturar)), 'pedidos')}
       {card('cr','alert', vencidas.length, 'Recebimentos vencidos', fmtBRL(somaValor(vencidas)), 'financeiro', vencidas.length>0 && <span className="trend down">atenção</span>)}
+      {semNf.length > 0 && card('ca','alert', semNf.length, 'Sem NF a regularizar', fmtBRL(somaValor(semNf)) + (semNfAtras ? ' · ' + semNfAtras + ' há +7 dias' : ''), 'pedidos', <span className={'trend ' + (semNfAtras ? 'down' : 'warnp')}>{semNfAtras ? 'atenção' : 'regularizar'}</span>)}
     </section>
   );
 }
@@ -587,12 +600,15 @@ function AgendaCard({editais, certidoes, pagar, receber}){
 }
 
 /* ── Alertas ── */
-function AlertasCard({certidoes, pagar, receber, estoque}){
+function AlertasCard({certidoes, pagar, receber, estoque, pedidos}){
   const certVenc = certidoes.filter(c => c.validade && diasAte(c.validade) < 0).length;
   const certProx = certidoes.filter(c => c.validade && diasAte(c.validade) >= 0 && diasAte(c.validade) <= 30).length;
   const contasVenc = [...pagar, ...receber].filter(c => c.status!=='pago' && c.status!=='recebido' && diasAte(c.vencimento) < 0).length;
   const estBaixo = estoque.filter(i => { const q = Number(i.quantidade||i.atual||0); const m = Number(i.estoqueMinimo||i.minimo||0); return m > 0 && q <= m; }).length;
+  const semNf = nfSemPendentes(pedidos || []);
+  const semNfAtras = semNf.filter(p => (nfSemDias(p) || 0) > 7).length;
   const linhas = [];
+  if(semNf.length) linhas.push({cls: semNfAtras ? 'cr' : 'ca', cor: semNfAtras ? 'var(--alert)' : 'var(--warn)', ic:'package', t:'Pedidos entregues sem NF', s: semNfAtras ? semNfAtras + ' há mais de 7 dias — regularize em Pedidos' : 'Regularize em Pedidos', n:semNf.length});
   if(certVenc) linhas.push({cls:'cr', cor:'var(--alert)', ic:'shield', t:'Certidões vencidas', s:'Regularize no Administrativo', n:certVenc});
   if(certProx) linhas.push({cls:'ca', cor:'var(--warn)', ic:'shield', t:'Certidões a vencer (30d)', s:'Fique de olho nos prazos', n:certProx});
   if(contasVenc) linhas.push({cls:'cr', cor:'var(--alert)', ic:'wallet', t:'Contas vencidas', s:'Pendências no Financeiro', n:contasVenc});
@@ -667,7 +683,7 @@ function App(){
           </div>
           <aside className="rail">
             <AgendaCard editais={editais.items} certidoes={certidoes.items} pagar={pagar.items} receber={receber.items} />
-            <AlertasCard certidoes={certidoes.items} pagar={pagar.items} receber={receber.items} estoque={estoque.items} />
+            <AlertasCard certidoes={certidoes.items} pagar={pagar.items} receber={receber.items} estoque={estoque.items} pedidos={pedidos.items} />
             <MovimentacoesCard movs={movs.items} loading={movs.loading} />
           </aside>
         </div>
