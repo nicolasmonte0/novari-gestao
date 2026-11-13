@@ -1387,7 +1387,7 @@ function NfDialog({ o, modo, enviarTxt, onClose, onSave }) {
         <button className="btn" onClick={onClose}>Cancelar</button>
         <span className="grow"></span>
         {!soEnviar && <button className={"btn" + (enviarTxt ? "" : " primary")} onClick={() => salvar(false)}>Salvar</button>}
-        {enviarTxt && <button className="btn primary" onClick={() => salvar(true)}>{enviarTxt}</button>}
+        {enviarTxt && <button className="btn primary" onClick={() => salvar(true)}>{semOuEnc ? enviarTxt + " (sem NF)" : enviarTxt}</button>}
       </div>
     </div>
   );
