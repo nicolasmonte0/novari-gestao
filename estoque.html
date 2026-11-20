@@ -278,7 +278,7 @@ function Header() {
 /* ── Dialog (padrão) ─────────────────────── */
 function Dialog({title, onClose, onSave, onDelete, saving, err, children}) {
   return (
-    <div className="ov" onClick={e => {if(e.target===e.currentTarget) onClose();}}>
+    <div className="ov">
       <div className="dlg" role="dialog" aria-modal="true">
         <div className="dlg-h">
           <h2>{title}</h2>
