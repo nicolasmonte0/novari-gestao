@@ -1192,14 +1192,14 @@ function PedidosApp() {
       )}
 
       {showNfList && <Overlay onClose={() => setShowNfList(false)}><NfPendentes lista={nfPend} onClose={() => setShowNfList(false)} onRegularizar={o => nfAbrir(o, "regularizar")} onAbrir={o => { setShowNfList(false); openDetail(o); }} /></Overlay>}
-      {nfDlg && nfDlgOrder && <Overlay onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} saida={saidaFaturamento(nfDlgOrder)} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
+      {nfDlg && nfDlgOrder && <Overlay fixo onClose={() => setNfDlg(null)}><NfDialog o={nfDlgOrder} modo={nfDlg.modo} saida={saidaFaturamento(nfDlgOrder)} onClose={() => setNfDlg(null)} onSave={d => nfGravar(nfDlgOrder, d)} /></Overlay>}
       {showSum && <Overlay onClose={() => setShowSum(false)}><DailySummary orders={orders} onClose={() => setShowSum(false)} /></Overlay>}
-      {showRecover && <Overlay onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
-      {showStages && <Overlay onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
-      {showFields && <Overlay onClose={() => setShowFields(false)}><FieldsManager fields={fieldsRaw} onClose={() => setShowFields(false)} onSave={saveFields} /></Overlay>}
+      {showRecover && <Overlay fixo onClose={() => setShowRecover(false)}><RecoverStages orders={orphanOrders} stages={stagesRaw} onClose={() => setShowRecover(false)} onSave={saveStages} /></Overlay>}
+      {showStages && <Overlay fixo onClose={() => setShowStages(false)}><StagesManager stages={stagesRaw} counts={counts} onClose={() => setShowStages(false)} onSave={saveStages} /></Overlay>}
+      {showFields && <Overlay fixo onClose={() => setShowFields(false)}><FieldsManager fields={fieldsRaw} onClose={() => setShowFields(false)} onSave={saveFields} /></Overlay>}
 
       {(modal === "add" || modal === "edit") && (
-        <Overlay onClose={() => setModal(null)}>
+        <Overlay fixo onClose={() => setModal(null)}>
           <div className="dlg" role="dialog" aria-modal="true" aria-label={modal === "add" ? "Novo pedido" : "Editar pedido"}>
             <div className="dlg-h">
               <h2>{modal === "add" ? "Novo pedido" : "Editar pedido"}</h2>
@@ -1888,13 +1888,19 @@ function FormBody({ form, setForm }) {
   );
 }
 
-function Overlay({ onClose, children }) {
+// fixo = janela de preenchimento: NÃO fecha ao clicar fora nem ao apertar Esc (evita perder o que foi digitado).
+// Sem fixo (painéis só de leitura / confirmações): fecha ao clicar no fundo, mas só se o clique começou E terminou no fundo.
+function Overlay({ onClose, fixo, children }) {
+  const downNoFundo = useRef(false);
   useEffect(() => {
+    if (fixo) return;
     const h = e => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, []);
-  return <div className="ov" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>{children}</div>;
+  return <div className="ov"
+    onMouseDown={e => { downNoFundo.current = e.target === e.currentTarget; }}
+    onClick={e => { const ok = downNoFundo.current && e.target === e.currentTarget; downNoFundo.current = false; if (!fixo && ok) onClose(); }}>{children}</div>;
 }
 
 function PedidosPagina() {
